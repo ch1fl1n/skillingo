@@ -1,0 +1,16 @@
+version: 1.0
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: write
+steps:
+  - name: 'Qodana Scan'
+    uses: JetBrains/qodana-action@v2025.2
+    with:
+      args: --apply-fixes
+      push-fixes: pull-request
+    env:
+      QODANA_TOKEN: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcmdhbml6YXRpb24iOiJrd01rbyIsInRva2VuIjoiQWFESnAiLCJ0b2tlbl92YWwiOiI2ZWNlMmFhNC0zOTY3LTQ1OTUtODVlOC1kOTQ2NTNlNDA4ZDIifQ.iTFE_EUZBIH3MxFryMmkO4vPzbEyb_UgcPLy-HGldcs
+
+
