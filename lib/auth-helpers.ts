@@ -78,7 +78,7 @@ export const deferAsyncOperation = (operation: () => Promise<void>) => {
  * Some events (like SIGNED_IN) can fire very frequently.
  * Use this to debounce expensive operations.
  */
-export const debounce = <T extends (...args: any[]) => any>(
+export const debounce = <T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number
 ): ((...args: Parameters<T>) => void) => {
@@ -102,7 +102,7 @@ export const debounce = <T extends (...args: any[]) => any>(
  */
 class AccessTokenManager {
   private token: string | null = null;
-  private subscription: any = null;
+  private subscription: { data: { subscription: { unsubscribe: () => void } } } | null = null;
 
   /**
    * Start listening for token updates
@@ -144,7 +144,7 @@ export const accessTokenManager = new AccessTokenManager();
 /**
  * Sign up helper with proper error handling
  */
-export const signUp = async (email: string, password: string, metadata?: any) => {
+export const signUp = async (email: string, password: string, metadata?: Record<string, unknown>) => {
   try {
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -157,8 +157,8 @@ export const signUp = async (email: string, password: string, metadata?: any) =>
     if (error) throw error;
 
     return { data, error: null };
-  } catch (error: any) {
-    console.error('Sign up error:', error.message);
+  } catch (error: unknown) {
+    console.error('Sign up error:', error instanceof Error ? error.message : String(error));
     return { data: null, error };
   }
 };
@@ -179,8 +179,8 @@ export const signIn = async (email: string, password: string) => {
     if (error) throw error;
 
     return { data, error: null };
-  } catch (error: any) {
-    console.error('Sign in error:', error.message);
+  } catch (error: unknown) {
+    console.error('Sign in error:', error instanceof Error ? error.message : String(error));
     return { data: null, error };
   }
 };
@@ -201,15 +201,11 @@ export const signInWithPhone = async (phone: string, password: string) => {
     if (error) throw error;
 
     return { data, error: null };
-  } catch (error: any) {
-    console.error('Phone sign in error:', error.message);
+  } catch (error: unknown) {
+    console.error('Phone sign in error:', error instanceof Error ? error.message : String(error));
     return { data: null, error };
   }
 };
-
-// ============================================================================
-// SIGN OUT
-// ============================================================================
 
 /**
  * Sign out a user
@@ -230,8 +226,8 @@ export const signOut = async (scope: 'global' | 'local' | 'others' = 'global') =
     const { error } = await supabase.auth.signOut({ scope });
     if (error) throw error;
     return { error: null };
-  } catch (error: any) {
-    console.error('Sign out error:', error.message);
+  } catch (error: unknown) {
+    console.error('Sign out error:', error instanceof Error ? error.message : String(error));
     return { error };
   }
 };
@@ -286,8 +282,8 @@ export const resetPassword = async (
 
     if (error) throw error;
     return { data, error: null };
-  } catch (error: any) {
-    console.error('Password reset error:', error.message);
+  } catch (error: unknown) {
+    console.error('Password reset error:', error instanceof Error ? error.message : String(error));
     return { data: null, error };
   }
 };
@@ -308,8 +304,8 @@ export const updatePassword = async (newPassword: string) => {
 
     if (error) throw error;
     return { data, error: null };
-  } catch (error: any) {
-    console.error('Password update error:', error.message);
+  } catch (error: unknown) {
+    console.error('Password update error:', error instanceof Error ? error.message : String(error));
     return { data: null, error };
   }
 };
@@ -331,21 +327,17 @@ export const sendPasswordResetEmail = async (
 export const updateUserProfile = async (updates: { 
   email?: string;
   password?: string;
-  data?: any;
+  data?: Record<string, unknown>;
 }) => {
   try {
     const { data, error } = await supabase.auth.updateUser(updates);
     if (error) throw error;
     return { data, error: null };
-  } catch (error: any) {
-    console.error('Profile update error:', error.message);
+  } catch (error: unknown) {
+    console.error('Profile update error:', error instanceof Error ? error.message : String(error));
     return { data: null, error };
   }
 };
-
-// ============================================================================
-// USER UPDATE HELPERS (email, phone, password, metadata, reauth)
-// ============================================================================
 
 /**
  * Reauthenticate current user to obtain a nonce required for sensitive updates
@@ -355,11 +347,12 @@ export const reauthenticate = async () => {
   try {
     // Depending on the SDK version, reauthenticate may return a nonce or a URL flow.
     // Here we assume a direct nonce response when applicable.
-    const { data, error } = await (supabase.auth as any).reauthenticate?.();
+    const auth = supabase.auth as unknown as { reauthenticate?: () => Promise<{ data: unknown; error: unknown }> };
+    const { data, error } = await auth.reauthenticate?.() || { data: null, error: new Error('Reauthenticate not supported') };
     if (error) throw error;
     return { data, error: null };
-  } catch (error: any) {
-    console.error('Reauthenticate error:', error.message);
+  } catch (error: unknown) {
+    console.error('Reauthenticate error:', error instanceof Error ? error.message : String(error));
     return { data: null, error };
   }
 };
@@ -383,7 +376,7 @@ export const updateUser = async (
     email?: string;
     password?: string;
     phone?: string;
-    data?: Record<string, any>;
+    data?: Record<string, unknown>;
     nonce?: string;
   },
   options?: {
@@ -393,14 +386,14 @@ export const updateUser = async (
   try {
     // Some SDK versions accept options as second arg; include when provided
     const result = options
-      ? await (supabase.auth.updateUser as any)(attributes, { emailRedirectTo: options.emailRedirectTo })
-      : await supabase.auth.updateUser(attributes as any);
+      ? await (supabase.auth.updateUser as unknown as (attrs: typeof attributes, opts: { emailRedirectTo?: string }) => Promise<{ data: { user: unknown }; error: unknown }>)(attributes, { emailRedirectTo: options.emailRedirectTo })
+      : await supabase.auth.updateUser(attributes as unknown as { email?: string; password?: string; phone?: string; data?: Record<string, unknown>; nonce?: string });
 
     const { data, error } = result;
     if (error) throw error;
     return { data, error: null };
-  } catch (error: any) {
-    console.error('Update user error:', error.message);
+  } catch (error: unknown) {
+    console.error('Update user error:', error instanceof Error ? error.message : String(error));
     return { data: null, error };
   }
 };
@@ -424,7 +417,7 @@ export const updatePasswordWithNonce = async (password: string, nonce: string) =
 };
 
 /** Update user metadata (raw_user_meta_data) */
-export const updateUserMetadata = async (data: Record<string, any>) => {
+export const updateUserMetadata = async (data: Record<string, unknown>) => {
   return updateUser({ data });
 };
 
@@ -440,7 +433,7 @@ export const updateUserMetadata = async (data: Record<string, any>) => {
  * 
  */
 export const signInAnonymously = async (options?: {
-  data?: any;
+  data?: Record<string, unknown>;
   captchaToken?: string;
 }) => {
   try {
@@ -459,8 +452,8 @@ export const signInAnonymously = async (options?: {
     }
 
     return { data, error: null };
-  } catch (error: any) {
-    console.error('Anonymous sign-in error:', error.message);
+  } catch (error: unknown) {
+    console.error('Anonymous sign-in error:', error instanceof Error ? error.message : String(error));
     return { data: null, error };
   }
 };
@@ -478,7 +471,7 @@ export const signInAnonymously = async (options?: {
 export const convertAnonymousUser = async (
   email: string,
   password: string,
-  metadata?: any
+  metadata?: Record<string, unknown>
 ) => {
   try {
     const { data, error } = await supabase.auth.updateUser({
@@ -491,8 +484,8 @@ export const convertAnonymousUser = async (
 
     console.log('Anonymous user converted to permanent user');
     return { data, error: null };
-  } catch (error: any) {
-    console.error('Conversion error:', error.message);
+  } catch (error: unknown) {
+    console.error('Conversion error:', error instanceof Error ? error.message : String(error));
     return { data: null, error };
   }
 };
@@ -512,10 +505,6 @@ export const isAnonymousUser = async (): Promise<boolean> => {
   }
 };
 
-// ============================================================================
-// OTP / MAGIC LINK SIGN-IN
-// ============================================================================
-
 /**
  * Sign in with email OTP (One-Time Password) or magic link
  * 
@@ -534,7 +523,7 @@ export const signInWithOTP = async (
   options?: {
     shouldCreateUser?: boolean;
     emailRedirectTo?: string;
-    data?: any;
+    data?: Record<string, unknown>;
   }
 ) => {
   try {
@@ -550,8 +539,8 @@ export const signInWithOTP = async (
     if (error) throw error;
 
     return { data, error: null };
-  } catch (error: any) {
-    console.error('OTP sign in error:', error.message);
+  } catch (error: unknown) {
+    console.error('OTP sign in error:', error instanceof Error ? error.message : String(error));
     return { data: null, error };
   }
 };
@@ -570,7 +559,7 @@ export const signInWithPhoneOTP = async (
   phone: string,
   options?: {
     shouldCreateUser?: boolean;
-    data?: any;
+    data?: Record<string, unknown>;
   }
 ) => {
   try {
@@ -585,8 +574,8 @@ export const signInWithPhoneOTP = async (
     if (error) throw error;
 
     return { data, error: null };
-  } catch (error: any) {
-    console.error('Phone OTP sign in error:', error.message);
+  } catch (error: unknown) {
+    console.error('Phone OTP sign in error:', error instanceof Error ? error.message : String(error));
     return { data: null, error };
   }
 };
@@ -604,7 +593,7 @@ export const signInWithWhatsAppOTP = async (
   phone: string,
   options?: {
     shouldCreateUser?: boolean;
-    data?: any;
+    data?: Record<string, unknown>;
   }
 ) => {
   try {
@@ -620,8 +609,8 @@ export const signInWithWhatsAppOTP = async (
     if (error) throw error;
 
     return { data, error: null };
-  } catch (error: any) {
-    console.error('WhatsApp OTP sign in error:', error.message);
+  } catch (error: unknown) {
+    console.error('WhatsApp OTP sign in error:', error instanceof Error ? error.message : String(error));
     return { data: null, error };
   }
 };
@@ -648,8 +637,8 @@ export const verifyOTP = async (
     if (error) throw error;
 
     return { data, error: null };
-  } catch (error: any) {
-    console.error('OTP verification error:', error.message);
+  } catch (error: unknown) {
+    console.error('OTP verification error:', error instanceof Error ? error.message : String(error));
     return { data: null, error };
   }
 };
@@ -676,7 +665,7 @@ export const verifyRecoveryOTP = async (email: string, token: string) => {
 };
 
 export const verifyInviteOTP = async (email: string, token: string) => {
-  return verifyOTP({ email, token, type: 'invite' as any }); // 'invite' not in current union but supported by backend
+  return verifyOTP({ email, token, type: 'invite' as unknown as 'email' }); // 'invite' not in current union but supported by backend
 };
 
 export const verifyEmailChangeOTP = async (email: string, token: string) => {
@@ -703,18 +692,15 @@ export const verifyTokenHash = async (
   try {
     // The official client expects { token: string, type: ... } with email/phone OR token_hash param in newer versions.
     // Fallback: treat tokenHash as token; adapt if future SDK exposes dedicated field.
-    const { data, error } = await supabase.auth.verifyOtp({ token: tokenHash, type } as any);
+    // @ts-expect-error - tokenHash may not match expected params
+    const { data, error } = await supabase.auth.verifyOtp({ token: tokenHash, type });
     if (error) throw error;
     return { data, error: null };
-  } catch (error: any) {
-    console.error('Token hash verification error:', error.message);
+  } catch (error: unknown) {
+    console.error('Token hash verification error:', error instanceof Error ? error.message : String(error));
     return { data: null, error };
   }
 };
-
-// ============================================================================
-// OAUTH SIGN-IN
-// ============================================================================
 
 /**
  * Sign in with OAuth provider (Google, Apple, GitHub, etc.)
@@ -753,15 +739,11 @@ export const signInWithOAuth = async (
     if (error) throw error;
 
     return { data, error: null };
-  } catch (error: any) {
-    console.error(`${provider} OAuth sign in error:`, error.message);
+  } catch (error: unknown) {
+    console.error(`${provider} OAuth sign in error:`, error instanceof Error ? error.message : String(error));
     return { data: null, error };
   }
 };
-
-// ============================================================================
-// ID TOKEN SIGN-IN (Native OAuth)
-// ============================================================================
 
 /**
  * Sign in with OIDC ID token
@@ -794,15 +776,11 @@ export const signInWithIdToken = async (
     if (error) throw error;
 
     return { data, error: null };
-  } catch (error: any) {
-    console.error(`${provider} ID token sign in error:`, error.message);
+  } catch (error: unknown) {
+    console.error(`${provider} ID token sign in error:`, error instanceof Error ? error.message : String(error));
     return { data: null, error };
   }
 };
-
-// ============================================================================
-// SSO (Single Sign-On)
-// ============================================================================
 
 /**
  * Sign in with SSO using email domain
@@ -836,8 +814,8 @@ export const signInWithSSODomain = async (
     }
 
     return { data: null, error: new Error('No SSO URL returned') };
-  } catch (error: any) {
-    console.error('SSO domain sign in error:', error.message);
+  } catch (error: unknown) {
+    console.error('SSO domain sign in error:', error instanceof Error ? error.message : String(error));
     return { data: null, error };
   }
 };
@@ -873,15 +851,11 @@ export const signInWithSSOProvider = async (
     }
 
     return { data: null, error: new Error('No SSO URL returned') };
-  } catch (error: any) {
-    console.error('SSO provider sign in error:', error.message);
+  } catch (error: unknown) {
+    console.error('SSO provider sign in error:', error instanceof Error ? error.message : String(error));
     return { data: null, error };
   }
 };
-
-// ============================================================================
-// JWT VERIFICATION AND CLAIMS
-// ============================================================================
 
 /**
  * Get user claims from verified JWT
@@ -919,8 +893,6 @@ export const getUserClaims = async (
   }
 ) => {
   try {
-    const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    
     // Get the JWT to verify - either provided or from current session
     let tokenToVerify = jwt;
     if (!tokenToVerify) {
@@ -978,8 +950,8 @@ export const getUserClaims = async (
       },
       error: null
     };
-  } catch (error: any) {
-    console.error('JWT verification error:', error.message);
+  } catch (error: unknown) {
+    console.error('JWT verification error:', error instanceof Error ? error.message : String(error));
     return { data: null, error };
   }
 };
@@ -1000,8 +972,8 @@ export const getCurrentUserClaims = async () => {
     }
     
     return { data: result.data.claims, error: null };
-  } catch (error: any) {
-    console.error('Error getting current user claims:', error.message);
+  } catch (error: unknown) {
+    console.error('Error getting current user claims:', error instanceof Error ? error.message : String(error));
     return { data: null, error };
   }
 };
@@ -1030,8 +1002,8 @@ export const decodeJWT = (jwt: string) => {
     const header = JSON.parse(headerJson);
     const claims = JSON.parse(claimsJson);
     return { header, claims, signature: parts[2] };
-  } catch (error: any) {
-    console.error('JWT decode error:', error.message);
+  } catch (error: unknown) {
+    console.error('JWT decode error:', error instanceof Error ? error.message : String(error));
     return null;
   }
 };
@@ -1052,7 +1024,7 @@ export const isJWTExpired = (jwt: string): boolean => {
     const now = Date.now();
     const nowSeconds = Math.floor(now / 1000);
     return decoded.claims.exp < nowSeconds;
-  } catch (error) {
+  } catch {
     return true;
   }
 };
@@ -1074,7 +1046,7 @@ export const getJWTTimeToExpiry = (jwt: string): number | null => {
     const nowSeconds = Math.floor(now / 1000);
     const timeLeft = decoded.claims.exp - nowSeconds;
     return timeLeft > 0 ? timeLeft : null;
-  } catch (error) {
+  } catch {
     return null;
   }
 };
@@ -1088,14 +1060,14 @@ export const getJWTTimeToExpiry = (jwt: string): number | null => {
  * @param jwt - JWT token (optional, uses current session if not provided)
  * @returns Custom claims object
  */
-export const getCustomClaims = async (jwt?: string): Promise<Record<string, any>> => {
+export const getCustomClaims = async (jwt?: string): Promise<Record<string, unknown>> => {
   try {
     const result = await getUserClaims(jwt);
     if (result.error || !result.data) {
       return {};
     }
 
-    const claims = result.data.claims as any;
+    const claims = result.data.claims as unknown;
     
     // Standard JWT claims to exclude
     const standardClaims = [
@@ -1105,8 +1077,8 @@ export const getCustomClaims = async (jwt?: string): Promise<Record<string, any>
     ];
 
     // Extract only custom claims
-    const customClaims: Record<string, any> = {};
-    for (const [key, value] of Object.entries(claims)) {
+    const customClaims: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(claims as Record<string, unknown>)) {
       if (!standardClaims.includes(key)) {
         customClaims[key] = value;
       }
@@ -1119,10 +1091,6 @@ export const getCustomClaims = async (jwt?: string): Promise<Record<string, any>
   }
 };
 
-// ============================================================================
-// SESSION HELPERS
-// ============================================================================
-
 /**
  * Retrieve current session, auto-refreshing if needed.
  * Thin wrapper around supabase.auth.getSession() adding defensive logging.
@@ -1133,8 +1101,8 @@ export const getSessionSafe = async () => {
     const { data: { session }, error } = await supabase.auth.getSession();
     if (error) throw error;
     return { session, error: null };
-  } catch (error: any) {
-    console.error('Get session error:', error.message);
+  } catch (error: unknown) {
+    console.error('Get session error:', error instanceof Error ? error.message : String(error));
     return { session: null, error };
   }
 };
@@ -1156,8 +1124,8 @@ export const refreshSessionExplicit = async (currentSession?: Session) => {
     const { data, error } = await supabase.auth.refreshSession({ refresh_token: baseSession.refresh_token });
     if (error) throw error;
     return { data, error: null };
-  } catch (error: any) {
-    console.error('Explicit session refresh error:', error.message);
+  } catch (error: unknown) {
+    console.error('Explicit session refresh error:', error instanceof Error ? error.message : String(error));
     return { data: { session: null, user: null }, error };
   }
 };
@@ -1186,15 +1154,11 @@ export const getServerUser = async (accessToken?: string) => {
     const { data, error } = await supabase.auth.getUser(accessToken);
     if (error) throw error;
     return { user: data.user, error: null };
-  } catch (error: any) {
-    console.error('Get server user error:', error.message);
+  } catch (error: unknown) {
+    console.error('Get server user error:', error instanceof Error ? error.message : String(error));
     return { user: null, error };
   }
 };
-
-// ============================================================================
-// USER IDENTITIES (Linked accounts)
-// ============================================================================
 
 /**
  * Retrieve identities linked to the currently signed-in user
@@ -1202,8 +1166,9 @@ export const getServerUser = async (accessToken?: string) => {
 export const getUserIdentities = async () => {
   try {
     // Prefer dedicated SDK method when available
-    if ((supabase.auth as any).getUserIdentities) {
-      const { data, error } = await (supabase.auth as any).getUserIdentities();
+    const auth = supabase.auth as unknown as { getUserIdentities?: () => Promise<{ data: unknown; error: unknown }> };
+    if (auth.getUserIdentities) {
+      const { data, error } = await auth.getUserIdentities();
       if (error) throw error;
       return { data, error: null };
     }
@@ -1211,10 +1176,10 @@ export const getUserIdentities = async () => {
     // Fallback: fetch user (authentic) and surface identities array if present
     const { data: userData, error: userError } = await supabase.auth.getUser();
     if (userError) throw userError;
-    const identities = (userData.user as any)?.identities || [];
+    const identities = (userData.user as unknown as { identities?: unknown[] })?.identities || [];
     return { data: { identities }, error: null };
-  } catch (error: any) {
-    console.error('Get user identities error:', error.message);
+  } catch (error: unknown) {
+    console.error('Get user identities error:', error instanceof Error ? error.message : String(error));
     return { data: null, error };
   }
 };
@@ -1225,11 +1190,12 @@ export const getUserIdentities = async () => {
  */
 export const linkIdentity = async (params: { provider: string; token?: string; idToken?: string }) => {
   try {
-    const { data, error } = await (supabase.auth as any).linkIdentity?.(params);
+    const auth = supabase.auth as unknown as { linkIdentity?: (p: typeof params) => Promise<{ data: unknown; error: unknown }> };
+    const { data, error } = await auth.linkIdentity?.(params) || { data: null, error: new Error('Link identity not supported') };
     if (error) throw error;
     return { data, error: null };
-  } catch (error: any) {
-    console.error('Link identity error:', error.message);
+  } catch (error: unknown) {
+    console.error('Link identity error:', error instanceof Error ? error.message : String(error));
     return { data: null, error };
   }
 };
@@ -1251,18 +1217,15 @@ export const unlinkIdentity = async (
         ? { identity_id: identity }
         : { identity_id: identity.identity_id, provider: identity.provider };
 
-    const { data, error } = await (supabase.auth as any).unlinkIdentity?.(payload);
+    const auth = supabase.auth as unknown as { unlinkIdentity?: (p: typeof payload) => Promise<{ data: unknown; error: unknown }> };
+    const { data, error } = await auth.unlinkIdentity?.(payload) || { data: null, error: new Error('Unlink identity not supported') };
     if (error) throw error;
     return { data, error: null };
-  } catch (error: any) {
-    console.error('Unlink identity error:', error.message);
+  } catch (error: unknown) {
+    console.error('Unlink identity error:', error instanceof Error ? error.message : String(error));
     return { data: null, error };
   }
 };
-
-// ============================================================================
-// RESEND OTP (emails or SMS for signup/email_change/phone_change)
-// ============================================================================
 
 type ResendEmailType = 'signup' | 'email_change';
 type ResendPhoneType = 'sms' | 'phone_change';
@@ -1275,11 +1238,12 @@ type ResendPhoneType = 'sms' | 'phone_change';
 export const resendOTP = async (
   credentials:
     | { email: string; type: ResendEmailType; options?: { emailRedirectTo?: string } }
-    | { phone: string; type: ResendPhoneType; options?: Record<string, any> }
+    | { phone: string; type: ResendPhoneType; options?: Record<string, unknown> }
 ) => {
   try {
-    if ((supabase.auth as any).resend) {
-      const { data, error } = await (supabase.auth as any).resend(credentials);
+    const auth = supabase.auth as unknown as { resend?: (c: typeof credentials) => Promise<{ data: unknown; error: unknown }> };
+    if (auth.resend) {
+      const { data, error } = await auth.resend(credentials);
       if (error) throw error;
       return { data, error: null };
     }
@@ -1303,8 +1267,8 @@ export const resendOTP = async (
       }
     }
     return { data: null, error: new Error('Resend not supported by current SDK version.') };
-  } catch (error: any) {
-    console.error('Resend OTP error:', error.message);
+  } catch (error: unknown) {
+    console.error('Resend OTP error:', error instanceof Error ? error.message : String(error));
     return { data: null, error };
   }
 };
@@ -1321,10 +1285,6 @@ export const resendSignupSMS = async (phone: string) =>
 export const resendPhoneChange = async (phone: string) =>
   resendOTP({ phone, type: 'phone_change' });
 
-// ============================================================================
-// SET SESSION (adopt existing tokens)
-// ============================================================================
-
 /**
  * Set the current session using existing access & refresh tokens.
  * Emits SIGNED_IN if successful. Automatically refreshes if expired.
@@ -1335,8 +1295,8 @@ export const setSession = async (accessToken: string, refreshToken: string) => {
     const { data, error } = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
     if (error) throw error;
     return { data, error: null };
-  } catch (error: any) {
-    console.error('Set session error:', error.message);
+  } catch (error: unknown) {
+    console.error('Set session error:', error instanceof Error ? error.message : String(error));
     return { data: { session: null, user: null }, error };
   }
 };

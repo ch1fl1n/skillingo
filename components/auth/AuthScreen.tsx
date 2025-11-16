@@ -55,7 +55,7 @@ export const AuthScreen: React.FC = () => {
     }
 
     setLoading(true);
-    const { data, error } = await signIn(email, password);
+    const { error } = await signIn(email, password);
     setLoading(false);
 
     if (error) {
@@ -94,7 +94,7 @@ export const AuthScreen: React.FC = () => {
 
   const handleAnonymousSignIn = async () => {
     setLoading(true);
-    const { data, error } = await signInAnonymously({
+    const { error } = await signInAnonymously({
       data: {
         source: 'auth_screen',
         created_at: new Date().toISOString(),

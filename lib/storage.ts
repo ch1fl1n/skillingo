@@ -89,7 +89,7 @@ export async function uploadToSignedUrl(
   bucketId: string,
   path: string,
   token: string,
-  fileBody: any,
+  fileBody: FileBody,
   fileOptions?: FileOptions
 ) {
   const { data, error } = await supabase.storage.from(bucketId).uploadToSignedUrl(path, token, fileBody, fileOptions)
@@ -107,7 +107,7 @@ export async function uploadToSignedUrl(
 export async function replaceFile(
   bucketId: string,
   path: string,
-  fileBody: any,
+  fileBody: FileBody,
   options?: FileOptions
 ) {
   const { data, error } = await supabase.storage.from(bucketId).update(path, fileBody, options)
@@ -154,6 +154,8 @@ export async function copyFile(
 }
 import { supabase } from '@/lib/supabase'
 import { FileOptions } from '@supabase/storage-js'
+
+type FileBody = string | ArrayBuffer | Blob | File | FormData | NodeJS.ReadableStream | URLSearchParams | ArrayBufferView | Buffer | ReadableStream
 
 
 // -----------------------------
