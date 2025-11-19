@@ -1,14 +1,14 @@
-import SpaceMonoFont from '../assets/fonts/SpaceMono-Regular.ttf';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import {DarkTheme, DefaultTheme, ThemeProvider} from '@react-navigation/native';
 import {useFonts} from 'expo-font';
 import {Stack} from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import {useEffect} from 'react';
+import {View, ActivityIndicator} from 'react-native';
 import 'react-native-reanimated';
 
 import {useColorScheme} from '@/components/useColorScheme';
-import {AuthProvider} from '@/contexts/AuthContext';
+import {AuthProvider, useAuth} from '@/contexts/AuthContext';
 
 export {
     // Catch any errors thrown by the Layout component.
@@ -25,7 +25,8 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
     const [loaded, error] = useFonts({
-        SpaceMono: SpaceMonoFont,
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
         ...FontAwesome.font,
     });
 
@@ -53,11 +54,31 @@ function RootLayoutNav() {
     return (
         <AuthProvider>
             <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-                <Stack>
-                    <Stack.Screen name="(tabs)" options={{headerShown: false}}/>
-                    <Stack.Screen name="modal" options={{presentation: 'modal'}}/>
-                </Stack>
+                <AuthenticatedStack />
             </ThemeProvider>
         </AuthProvider>
+    );
+}
+
+function AuthenticatedStack() {
+    const { loading } = useAuth();
+    const colorScheme = useColorScheme();
+
+    // Show loading screen while checking authentication
+    if (loading) {
+        return (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colorScheme === 'dark' ? '#000' : '#fff' }}>
+                <ActivityIndicator size="large" color={colorScheme === 'dark' ? '#fff' : '#3498db'} />
+            </View>
+        );
+    }
+
+    return (
+        <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="login" />
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="onboarding" />
+            <Stack.Screen name="modal" options={{presentation: 'modal'}}/>
+        </Stack>
     );
 }

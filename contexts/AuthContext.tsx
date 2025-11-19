@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Session, User, AuthChangeEvent } from '@supabase/supabase-js';
+import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 
 interface AuthContextType {
@@ -34,71 +34,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener
+    let mounted = true;
+
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (mounted) {
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+      }
+    });
+
+    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event: AuthChangeEvent, currentSession: Session | null) => {
-        console.log('Auth event:', event);
-
-        switch (event) {
-          case 'INITIAL_SESSION':
-            // Handle initial session load
-            console.log('Initial session loaded');
-            setSession(currentSession);
-            setUser(currentSession?.user ?? null);
-            setLoading(false);
-            break;
-
-          case 'SIGNED_IN':
-            // User signed in or session re-established
-            console.log('User signed in:', currentSession?.user?.email);
-            setSession(currentSession);
-            setUser(currentSession?.user ?? null);
-            setLoading(false);
-            break;
-
-          case 'SIGNED_OUT':
-            // User signed out - clean up local state
-            console.log('User signed out');
-            setSession(null);
-            setUser(null);
-            setLoading(false);
-            // Add any cleanup logic here (clear local storage, reset app state, etc.)
-            break;
-
-          case 'TOKEN_REFRESHED':
-            // New access token fetched
-            console.log('Token refreshed');
-            setSession(currentSession);
-            // Extract and store access token if needed
-            const accessToken = currentSession?.access_token;
-            if (accessToken) {
-              // Store in memory or use for API calls
-              console.log('New access token available');
-            }
-            break;
-
-          case 'USER_UPDATED':
-            // User profile updated
-            console.log('User updated:', currentSession?.user?.email);
-            setSession(currentSession);
-            setUser(currentSession?.user ?? null);
-            break;
-
-          case 'PASSWORD_RECOVERY':
-            // Password recovery link clicked
-            console.log('Password recovery initiated');
-            // Navigate to password reset screen
-            // You can emit a custom event or use navigation here
-            break;
-
-          default:
-            console.log('Unhandled auth event:', event);
+      (_event, session) => {
+        if (mounted) {
+          setSession(session);
+          setUser(session?.user ?? null);
+          setLoading(false);
         }
       }
     );
 
-    // Cleanup subscription on unmount
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
   }, []);

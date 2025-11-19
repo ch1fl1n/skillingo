@@ -229,6 +229,69 @@ export async function getCurrentUserProfile() {
     .select('id, username, email, avatar_url, level, total_xp, role, created_at')
     .eq('id', userId)
     .single()
-  if (error) throw error
+  
+  if (error) {
+    console.error('Error fetching user profile:', error)
+    throw new Error(`Failed to fetch profile: ${error.message}`)
+  }
+  
   return data
+}
+
+/**
+ * Calculate user's current learning streak in days
+ * Counts consecutive days with at least one lesson attempt
+ */
+export async function getUserStreak(): Promise<number> {
+  const userId = await requireAuthUserId()
+  
+  const { data, error } = await supabase
+    .from('lesson_attempts')
+    .select('attempted_at')
+    .eq('user_id', userId)
+    .order('attempted_at', { ascending: false })
+    .limit(100) // Look at last 100 attempts
+  
+  if (error) throw error
+  if (!data || data.length === 0) return 0
+
+  // Convert to dates and remove time component
+  const attemptDates = data.map(attempt => {
+    const date = new Date(attempt.attempted_at || '')
+    date.setHours(0, 0, 0, 0)
+    return date.getTime()
+  })
+
+  // Remove duplicates and sort descending
+  const uniqueDates = Array.from(new Set(attemptDates)).sort((a, b) => b - a)
+  
+  if (uniqueDates.length === 0) return 0
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const todayTime = today.getTime()
+
+  // Check if most recent attempt was today or yesterday
+  const mostRecentDate = uniqueDates[0]
+  const oneDayMs = 24 * 60 * 60 * 1000
+  
+  if (mostRecentDate < todayTime - oneDayMs) {
+    // Most recent attempt was more than 1 day ago, streak is broken
+    return 0
+  }
+
+  // Count consecutive days
+  let streak = 0
+  let expectedDate = todayTime
+
+  for (const attemptDate of uniqueDates) {
+    if (attemptDate === expectedDate || attemptDate === expectedDate - oneDayMs) {
+      streak++
+      expectedDate = attemptDate - oneDayMs
+    } else {
+      break
+    }
+  }
+
+  return streak
 }
