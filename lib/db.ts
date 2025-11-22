@@ -1,5 +1,11 @@
 import { supabase } from '@/lib/supabase'
 import type { Tables, TablesInsert } from '@/types/database.types'
+import type { 
+  Skill, 
+  Lesson, 
+  LessonWithCompletion, 
+  SkillWithProgress 
+} from '@/types/lesson.types'
 
 // Utility: get current authenticated user id
 async function requireAuthUserId(): Promise<string> {
@@ -105,8 +111,88 @@ export async function ratePost(postId: number, rating: number) {
 }
 
 // -----------------------------
+// Skills
+// -----------------------------
+export async function getSkills(): Promise<SkillWithProgress[]> {
+  const userId = await requireAuthUserId()
+  
+  const { data: skills, error } = await supabase
+    .from('skills')
+    .select('id, name, description')
+    .order('id', { ascending: true })
+  
+  if (error) throw error
+  
+  // Fetch user progress for all skills
+  const { data: progressData } = await supabase
+    .from('user_progress')
+    .select('skill_id, progress_percent')
+    .eq('user_id', userId)
+  
+  const progressMap = new Map(
+    progressData?.map(p => [p.skill_id, p.progress_percent]) || []
+  )
+  
+  return skills.map(skill => ({
+    ...skill,
+    progress_percent: progressMap.get(skill.id) || 0
+  }))
+}
+
+export async function getSkillById(skillId: number): Promise<Skill> {
+  const { data, error } = await supabase
+    .from('skills')
+    .select('id, name, description')
+    .eq('id', skillId)
+    .single()
+  
+  if (error) throw error
+  return data
+}
+
+// -----------------------------
 // Lessons & Progress
 // -----------------------------
+export async function getLessonsBySkillId(skillId: number): Promise<LessonWithCompletion[]> {
+  const userId = await requireAuthUserId()
+  
+  const { data: lessons, error } = await supabase
+    .from('lessons')
+    .select('id, skill_id, title, difficulty, xp_reward, content, created_at')
+    .eq('skill_id', skillId)
+    .order('id', { ascending: true })
+  
+  if (error) throw error
+  
+  // Fetch user's completed lessons
+  const { data: attempts } = await supabase
+    .from('lesson_attempts')
+    .select('lesson_id, completed, score')
+    .eq('user_id', userId)
+    .eq('completed', true)
+  
+  const attemptsMap = new Map(
+    attempts?.map(a => [a.lesson_id, { completed: a.completed, score: a.score }]) || []
+  )
+  
+  return lessons.map(lesson => ({
+    ...lesson,
+    completed: attemptsMap.get(lesson.id)?.completed || false,
+    user_score: attemptsMap.get(lesson.id)?.score || null
+  }))
+}
+
+export async function getLessonById(lessonId: number): Promise<Lesson> {
+  const { data, error } = await supabase
+    .from('lessons')
+    .select('id, skill_id, title, difficulty, xp_reward, content, created_at')
+    .eq('id', lessonId)
+    .single()
+  
+  if (error) throw error
+  return data
+}
+
 export async function trackLessonAttempt(input: {
   lesson_id: number
   score?: number | null
@@ -128,6 +214,10 @@ export async function trackLessonAttempt(input: {
 
   if (error) throw error
   return data
+}
+
+export async function awardXP(xpAmount: number): Promise<number> {
+  return await addUserXp(xpAmount) || 0
 }
 
 export async function upsertUserProgress(input: {

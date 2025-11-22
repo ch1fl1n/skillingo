@@ -61,7 +61,7 @@ function RootLayoutNav() {
 }
 
 function AuthenticatedStack() {
-    const { loading } = useAuth();
+    const { user, loading } = useAuth();
     const colorScheme = useColorScheme();
 
     // Show loading screen while checking authentication
@@ -75,10 +75,19 @@ function AuthenticatedStack() {
 
     return (
         <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="login" />
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="onboarding" />
-            <Stack.Screen name="modal" options={{presentation: 'modal'}}/>
+            {!user ? (
+                <>
+                    <Stack.Screen name="login" options={{ headerShown: false }} />
+                    <Stack.Screen name="signup" options={{ headerShown: false }} />
+                    <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
+                </>
+            ) : (
+                <>
+                    <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                    <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+                    <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+                </>
+            )}
         </Stack>
     );
 }

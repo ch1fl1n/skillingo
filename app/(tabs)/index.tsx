@@ -2,38 +2,56 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { skills, Skill } from '@/constants/skills';
+import { useRouter } from 'expo-router';
+import { skills as fallbackSkills, Skill } from '@/constants/skills';
 import { useAuth } from '@/contexts/AuthContext';
-import { getCurrentUserProfile, getUserStreak } from '@/lib/db';
+import { getCurrentUserProfile, getUserStreak, getSkills } from '@/lib/db';
+import type { SkillWithProgress } from '@/types/lesson.types';
+
+// Map skill names to colors and icons (matching the skills list screen)
+const SKILL_STYLES: Record<string, { color: string; icon: string }> = {
+  'Creativity': { color: '#10b981', icon: 'lightbulb-on-outline' },
+  'Critical Thinking': { color: '#3b82f6', icon: 'head-lightbulb-outline' },
+  'Communication': { color: '#8b5cf6', icon: 'message-text-outline' },
+  'Collaboration': { color: '#eab308', icon: 'account-group-outline' },
+  'Curiosity': { color: '#f97316', icon: 'magnify' },
+  'Courage': { color: '#ef4444', icon: 'shield-outline' },
+  'Resilience': { color: '#14b8a6', icon: 'arm-flex-outline' },
+  'Ethics': { color: '#6b7280', icon: 'scale-balance' },
+  'Metacognition': { color: '#10b981', icon: 'brain' },
+  'Imagination': { color: '#a855f7', icon: 'creation' },
+};
 
 // Component for each skill item in the list
-const SkillItem: React.FC<{ skill: Skill }> = ({ skill }) => {
+const SkillItem: React.FC<{ skill: SkillWithProgress; router: any }> = ({ skill, router }) => {
+  const style = SKILL_STYLES[skill.name] || { color: '#6b7280', icon: 'star-outline' };
+  const progress = skill.progress_percent || 0;
+  
   return (
     <View style={styles.skillContainer}>
       <TouchableOpacity
         style={[
           styles.skillButton,
-          { backgroundColor: skill.color, opacity: skill.isLocked ? 0.5 : 1 },
+          { backgroundColor: style.color },
         ]}
-        disabled={skill.isLocked}
+        onPress={() => router.push({
+          pathname: '/skills/[skillId]',
+          params: { skillId: String(skill.id) }
+        })}
+        activeOpacity={0.8}
       >
         <MaterialCommunityIcons
-          name={skill.icon}
+          name={style.icon as any}
           size={28}
           color="#fff"
         />
-        <Text style={styles.skillTitle}>{skill.title}</Text>
-        {!skill.isLocked && (
+        <Text style={styles.skillTitle}>{skill.name}</Text>
+        {progress > 0 && (
           <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: `${skill.progress || 0}%` }]} />
+            <View style={[styles.progressFill, { width: `${progress}%` }]} />
           </View>
         )}
       </TouchableOpacity>
-      {skill.isLocked && (
-        <View style={styles.lockBadge}>
-          <MaterialCommunityIcons name="lock" size={16} color="#fff" />
-        </View>
-      )}
     </View>
   );
 };
@@ -41,9 +59,11 @@ const SkillItem: React.FC<{ skill: Skill }> = ({ skill }) => {
 // Main screen component
 export default function HomeScreen() {
   const { user } = useAuth();
+  const router = useRouter();
   
   const [profile, setProfile] = useState<{ username: string | null; level: number; total_xp: number } | null>(null);
   const [streak, setStreak] = useState<number>(0);
+  const [dbSkills, setDbSkills] = useState<SkillWithProgress[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -58,13 +78,15 @@ export default function HomeScreen() {
         setLoading(true);
         setError('');
         
-        const [profileData, streakCount] = await Promise.all([
+        const [profileData, streakCount, skillsData] = await Promise.all([
           getCurrentUserProfile(),
           getUserStreak(),
+          getSkills(),
         ]);
         
         setProfile(profileData);
         setStreak(streakCount);
+        setDbSkills(skillsData);
       } catch (err) {
         console.error('Error fetching user data:', err);
         setError('Failed to load profile data');
@@ -144,23 +166,27 @@ export default function HomeScreen() {
 
           {/* Stats Row */}
           <View style={styles.statsRow}>
-            <View style={styles.statCard}>
+            <TouchableOpacity style={styles.statCard} activeOpacity={0.7}>
               <MaterialCommunityIcons name="fire" size={24} color="#ff6b35" />
               <Text style={styles.statValue}>{streak}</Text>
               <Text style={styles.statLabel}>Day Streak</Text>
-            </View>
+            </TouchableOpacity>
             
-            <View style={styles.statCard}>
+            <TouchableOpacity style={styles.statCard} activeOpacity={0.7}>
               <MaterialCommunityIcons name="trophy" size={24} color="#ffd700" />
               <Text style={styles.statValue}>{totalXP}</Text>
               <Text style={styles.statLabel}>Total XP</Text>
-            </View>
+            </TouchableOpacity>
             
-            <View style={styles.statCard}>
+            <TouchableOpacity 
+              style={styles.statCard} 
+              activeOpacity={0.7}
+              onPress={() => router.push('/skills')}
+            >
               <MaterialCommunityIcons name="star" size={24} color="#00d4ff" />
               <Text style={styles.statValue}>{level}</Text>
               <Text style={styles.statLabel}>Level</Text>
-            </View>
+            </TouchableOpacity>
           </View>
         </View>
       </LinearGradient>
@@ -169,9 +195,13 @@ export default function HomeScreen() {
       <ScrollView style={styles.skillsSection} showsVerticalScrollIndicator={false}>
         <Text style={styles.sectionTitle}>Your Learning Path</Text>
         
-        {skills.map((skill) => (
-          <SkillItem key={skill.id} skill={skill} />
-        ))}
+        {dbSkills.length > 0 ? (
+          dbSkills.map((skill) => (
+            <SkillItem key={skill.id} skill={skill} router={router} />
+          ))
+        ) : (
+          <Text style={styles.emptyText}>No skills available yet</Text>
+        )}
       </ScrollView>
     </View>
   );
@@ -320,6 +350,12 @@ const styles = StyleSheet.create({
     color: '#1a1a1a',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  emptyText: {
+    color: '#999',
+    fontSize: 16,
+    textAlign: 'center',
+    marginTop: 20,
   },
   skillContainer: {
     position: 'relative',

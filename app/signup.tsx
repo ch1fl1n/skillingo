@@ -117,10 +117,16 @@ export default function SignupScreen() {
       }
 
       if (data?.user) {
-        // If session exists, navigate to app; otherwise prompt email confirmation
+        // If session exists, navigate to onboarding; otherwise prompt email confirmation
         if (data.session) {
           setLoading(false);
-          router.replace('/(tabs)');
+          // Check if onboarding is needed
+          const onboardingCompleted = data.user.user_metadata?.onboarding_completed;
+          if (onboardingCompleted) {
+            router.replace('/(tabs)');
+          } else {
+            router.replace('/onboarding');
+          }
           return;
         }
 
