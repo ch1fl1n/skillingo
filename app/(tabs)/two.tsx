@@ -10,9 +10,14 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+
 
 // imagen subida (usar esta ruta tal cual)
 const HERO_IMAGE_URI = '/mnt/data/bd822d6a-2b46-4e98-b87a-73dc794b513d.png';
+
+
+
 
 const posts = [
   {
@@ -42,6 +47,7 @@ const posts = [
 ];
 
 export default function TabThreeScreen() {
+      const router = useRouter();
   const [activeTab, setActiveTab] = React.useState<'for' | 'following' | 'groups'>('for');
 
   return (
@@ -50,9 +56,13 @@ export default function TabThreeScreen() {
       <LinearGradient colors={['#2a2a2a', '#1a1a1a']} style={styles.header}>
         <View style={styles.headerRow}>
           <Text style={styles.headerTitle}>Community</Text>
-          <TouchableOpacity style={styles.addButton} activeOpacity={0.7}>
+        <TouchableOpacity
+            style={styles.addButton}
+            activeOpacity={0.7}
+            onPress={() => router.push({ pathname: '/Not_seen/Post' })} 
+        >
             <MaterialCommunityIcons name="plus" size={20} color="#fff" />
-          </TouchableOpacity>
+        </TouchableOpacity>
         </View>
 
         {/* Search */}
