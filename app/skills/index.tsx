@@ -66,7 +66,12 @@ export default function SkillsScreen() {
     return (
       <TouchableOpacity
         style={[styles.skillCard, { backgroundColor: style.color }]}
-        onPress={() => router.push(`/skills/${item.id}`)}
+        onPress={() =>
+          router.push({
+            pathname: '/skills/[skillId]',
+            params: { skillId: String(item.id) },
+          })
+        }
         activeOpacity={0.8}
       >
         <View style={styles.skillContent}>

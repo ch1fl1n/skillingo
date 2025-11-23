@@ -12,7 +12,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getSkillById, getLessonsBySkillId } from '@/lib/db';
 import { useColorScheme } from '@/components/useColorScheme';
-import Colors from '@/constants/Colors';
+import Colors from '@/constants/Colors';             
 import type { Skill, LessonWithCompletion, Difficulty } from '@/types/lesson.types';
 
 const DIFFICULTY_COLORS: Record<Difficulty, string> = {
