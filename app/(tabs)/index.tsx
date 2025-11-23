@@ -3,10 +3,11 @@ import { StyleSheet, View, Text, ScrollView, TouchableOpacity, ActivityIndicator
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { skills as fallbackSkills, Skill } from '@/constants/skills';
 import { useAuth } from '@/contexts/AuthContext';
 import { getCurrentUserProfile, getUserStreak, getSkills } from '@/lib/db';
 import type { SkillWithProgress } from '@/types/lesson.types';
+
+import mascotImage from '@/assets/images/mascot/step4.jpeg';
 
 // Map skill names to colors and icons (matching the skills list screen)
 const SKILL_STYLES: Record<string, { color: string; icon: string }> = {
@@ -23,7 +24,7 @@ const SKILL_STYLES: Record<string, { color: string; icon: string }> = {
 };
 
 // Component for each skill item in the list
-const SkillItem: React.FC<{ skill: SkillWithProgress; router: any }> = ({ skill, router }) => {
+const SkillItem: React.FC<{ skill: SkillWithProgress; router: ReturnType<typeof useRouter> }> = ({ skill, router }) => {
   const style = SKILL_STYLES[skill.name] || { color: '#6b7280', icon: 'star-outline' };
   const progress = skill.progress_percent || 0;
   
@@ -41,6 +42,7 @@ const SkillItem: React.FC<{ skill: SkillWithProgress; router: any }> = ({ skill,
         activeOpacity={0.8}
       >
         <MaterialCommunityIcons
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           name={style.icon as any}
           size={28}
           color="#fff"
@@ -61,7 +63,7 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const router = useRouter();
   
-  const [profile, setProfile] = useState<{ username: string | null; level: number; total_xp: number } | null>(null);
+  const [profile, setProfile] = useState<{ username: string | null; level: number | null; total_xp: number | null } | null>(null);
   const [streak, setStreak] = useState<number>(0);
   const [dbSkills, setDbSkills] = useState<SkillWithProgress[]>([]);
   const [loading, setLoading] = useState(true);
@@ -141,7 +143,7 @@ export default function HomeScreen() {
           <View style={styles.profileSection}>
             <View style={styles.avatarContainer}>
               <Image 
-                source={require('@/assets/images/mascot/step4.jpeg')}
+                source={mascotImage}
                 style={styles.avatar}
                 resizeMode="contain"
               />

@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { getLessonById, trackLessonAttempt, awardXP, upsertUserProgress } from '@/lib/db';
+import { getLessonById, trackLessonAttempt, awardXP } from '@/lib/db';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
 import QuizComponent from '@/components/lesson/QuizComponent';

@@ -76,6 +76,7 @@ export default function SkillsScreen() {
       >
         <View style={styles.skillContent}>
           <MaterialCommunityIcons
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             name={style.icon as any}
             size={32}
             color="#fff"

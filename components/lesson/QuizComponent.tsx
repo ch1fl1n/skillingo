@@ -1,7 +1,7 @@
                      import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import type { Quiz, Question } from '@/types/lesson.types';
+import type { Quiz } from '@/types/lesson.types';
 
 interface QuizComponentProps {
   quiz: Quiz;
@@ -117,8 +117,8 @@ export default function QuizComponent({ quiz, onComplete, passingScore = 70 }: Q
           const isSelected = selectedAnswer === index;
           const isCorrect = index === currentQuestion.correct_answer;
           
-          let optionStyle = [styles.optionButton];
-          let optionTextStyle = [styles.optionText];
+          const optionStyle = [styles.optionButton];
+          const optionTextStyle = [styles.optionText];
 
           if (showFeedback && isSelected) {
             if (isCorrect) {

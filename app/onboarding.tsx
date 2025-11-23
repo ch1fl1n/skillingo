@@ -19,13 +19,18 @@ import { supabase } from '@/lib/supabase';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 
+import step1Image from '@/assets/images/mascot/step1.jpeg';
+import step2Image from '@/assets/images/mascot/step2.jpeg';
+import step3Image from '@/assets/images/mascot/step3.jpeg';
+import step4Image from '@/assets/images/mascot/step4.jpeg';
+
 const { width, height } = Dimensions.get('window');
 
 type OnboardingStep = {
   id: number;
   title: string;
   description: string;
-  image: any;
+  image: number;
   backgroundColor: string;
 };
 
@@ -35,7 +40,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     title: 'Welcome to Skillingo!',
     description:
       "Skillingo is a platform designed to help you learn and grow your skills in a fun and engaging way. Let's get started!",
-    image: require('@/assets/images/mascot/step1.jpeg'),
+    image: step1Image,
     backgroundColor: '#0f1724',
   },
   {
@@ -43,7 +48,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     title: 'Join the Community Hub',
     description:
       'Connect with fellow learners, share insights, and collaborate on projects. Our community is here to support your growth.',
-    image: require('@/assets/images/mascot/step3.jpeg'),
+    image: step3Image,
     backgroundColor: '#0f1724',
   },
   {
@@ -51,7 +56,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     title: 'Learn with Friends',
     description:
       'Connect with friends, share your progress, and learn together. Track your achievements and celebrate victories!',
-    image: require('@/assets/images/mascot/step2.jpeg'),
+    image: step2Image,
     backgroundColor: '#0f1724',
   },
   {
@@ -59,7 +64,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     title: 'Learn and Connect',
     description:
       'Dive into interactive modules designed to boost your problem-solving and collaboration skills through engaging scenarios and challenges.',
-    image: require('@/assets/images/mascot/step4.jpeg'),
+    image: step4Image,
     backgroundColor: '#0f1724',
   },
 ];
@@ -157,7 +162,13 @@ export default function OnboardingScreen() {
         return;
       }
 
-      await supabase.from('users').update({ username }).eq('id', user?.id);
+      if (!user?.id) {
+        setError('User not authenticated');
+        setLoading(false);
+        return;
+      }
+
+      await supabase.from('users').update({ username }).eq('id', user.id);
 
       await updateUserMetadata({ onboarding_completed: true });
 
@@ -196,7 +207,7 @@ export default function OnboardingScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <View style={styles.usernameContainer}>
-          <Image source={require('@/assets/images/mascot/step2.jpeg')} style={styles.usernameImage} resizeMode="contain" />
+          <Image source={step2Image} style={styles.usernameImage} resizeMode="contain" />
 
           <Text style={styles.usernameTitle}>Choose Your Username</Text>
           <Text style={styles.usernameDescription}>
