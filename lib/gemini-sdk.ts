@@ -17,7 +17,7 @@ export async function sdkGenerateText(prompt: string, model = 'gemini-2.5-flash'
   return response.text();
 }
 
-export interface SdkStructuredOptions<T> {
+export interface SdkStructuredOptions {
   prompt: string | string[]; // puede ser varias partes
   model?: string;
   schema: Record<string, unknown>; // JSON Schema

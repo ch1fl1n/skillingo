@@ -200,7 +200,7 @@ export interface SmartNotification {
   type: NotificationType;
   title: string;
   body: string;
-  data?: Record<string, any>; // Additional context
+  data?: Record<string, unknown>; // Additional context
   optimal_send_time: string; // AI-determined best time
   sent_at?: string; // When it was actually sent
   interacted_at?: string; // When/if user opened it

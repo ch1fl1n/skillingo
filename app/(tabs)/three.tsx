@@ -5,8 +5,10 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import EditScreenInfo from '@/components/EditScreenInfo';
 
 // rutas a las imágenes subidas (usa exactamente estas rutas)
-const HERO_IMAGE_URI = '/mnt/data/4c96c5e3-309b-4ac6-88cb-67303910a4f4.png';
-const SKILL_GRAPH_URI = '/mnt/data/c82faa0b-ab2e-4e0d-91b8-50200f7d7aa0.png';
+/* eslint-disable @typescript-eslint/no-require-imports */
+const HERO_IMAGE = require('@/assets/images/mascot/step1.jpeg');
+const SKILL_GRAPH = require('@/assets/images/mascot/step2.jpeg');
+/* eslint-enable @typescript-eslint/no-require-imports */
 
 // Imports para obtener datos (igual que en index)
 import { useAuth } from '@/contexts/AuthContext';
@@ -135,7 +137,7 @@ export default function TabThreeScreen() {
           </View>
           <View style={styles.cardRight}>
             <View style={styles.lessonThumb}>
-              <Image source={{ uri: HERO_IMAGE_URI }} style={styles.lessonImage} />
+              <Image source={HERO_IMAGE} style={styles.lessonImage} />
             </View>
           </View>
         </View>
@@ -187,7 +189,7 @@ export default function TabThreeScreen() {
             <Text style={styles.overallGain}>+10%</Text>
           </View>
 
-          <Image source={{ uri: SKILL_GRAPH_URI }} style={styles.graphImage} resizeMode="contain" />
+          <Image source={SKILL_GRAPH} style={styles.graphImage} resizeMode="contain" />
 
           <View style={styles.graphAxis}>
             <Text style={styles.axisLabel}>Jan</Text>

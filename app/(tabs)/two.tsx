@@ -14,7 +14,9 @@ import { useRouter } from 'expo-router';
 
 
 // imagen subida (usar esta ruta tal cual)
-const HERO_IMAGE_URI = '/mnt/data/bd822d6a-2b46-4e98-b87a-73dc794b513d.png';
+/* eslint-disable @typescript-eslint/no-require-imports */
+const HERO_IMAGE = require('@/assets/images/mascot/step4.jpeg');
+/* eslint-enable @typescript-eslint/no-require-imports */
 
 
 
@@ -100,7 +102,7 @@ export default function TabThreeScreen() {
         {posts.map((p) => (
           <View key={p.id} style={styles.postCard}>
             <View style={styles.postRow}>
-              <Image source={{ uri: HERO_IMAGE_URI }} style={styles.avatar} />
+              <Image source={HERO_IMAGE} style={styles.avatar} />
               <View style={styles.postBody}>
                 <View style={styles.postHeader}>
                   <Text style={styles.postTitle}>{p.title}</Text>

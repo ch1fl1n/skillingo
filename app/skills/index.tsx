@@ -10,10 +10,18 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { getSkills } from '@/lib/db';
+import { supabase, currentUserId, subscribeUserProgress } from '@/lib/supabase';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
-import type { SkillWithProgress } from '@/types/lesson.types';
+import { useAuth } from '@/contexts/AuthContext';
+
+// Estructura combinada (skill + progreso usuario) que usamos en la UI.
+interface SkillWithProgress {
+  id: number;
+  name: string;
+  description: string | null;
+  progress_percent: number; // 0-100 agregado localmente
+}
 
 // Map skill names to colors and icons
 const SKILL_STYLES: Record<string, { color: string; icon: string }> = {
@@ -33,20 +41,55 @@ export default function SkillsScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const { profile } = useAuth();
 
   const [skills, setSkills] = useState<SkillWithProgress[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
+    // Cargar skills al montar o cuando cambie perfil (login/logout).
     loadSkills();
-  }, []);
+    let unsubscribe: (() => void) | null = null;
+    (async () => {
+      const uid = await currentUserId();
+      if (uid) {
+        // Suscribimos a cambios de progreso para refrescar sólo secciones afectadas.
+        unsubscribe = subscribeUserProgress(uid, () => {
+          // Estrategia simple: recargar progresos (podría optimizarse con diff).    
+          loadSkills();
+        });
+      }
+    })();
+    return () => { if (unsubscribe) unsubscribe(); };
+  }, [profile]);
 
   const loadSkills = async () => {
+    const uid = await currentUserId();
+    if (!uid) return;
     try {
       setLoading(true);
-      const data = await getSkills();
-      setSkills(data);
+      const { data: skillsData, error: skillsError } = await supabase
+        .from('skills')
+        .select('id,name,description');
+      if (skillsError) throw skillsError;
+
+      const { data: progressData, error: progressError } = await supabase
+        .from('user_progress')
+        .select('skill_id,progress_percent')
+        .eq('user_id', uid);
+      if (progressError) console.warn(progressError);
+
+      // Map rápido skill_id -> progress_percent para unir datos.
+      const progressMap = new Map<number, number>();
+      progressData?.forEach(p => progressMap.set(p.skill_id!, p.progress_percent || 0));
+
+      const skillsWithProgress = skillsData.map(s => ({
+        ...s,
+        progress_percent: progressMap.get(s.id) || 0,
+      }));
+
+      setSkills(skillsWithProgress);
     } catch (err) {
       console.error('Error loading skills:', err);
       setError(err instanceof Error ? err.message : 'Failed to load skills');
@@ -55,10 +98,12 @@ export default function SkillsScreen() {
     }
   };
 
+  // Mapea nombre de la skill a color e ícono. Fallback neutral.
   const getSkillStyle = (skillName: string) => {
     return SKILL_STYLES[skillName] || { color: '#6b7280', icon: 'star-outline' };
   };
 
+  // Renderiza tarjeta de skill con barra de progreso local.
   const renderSkillCard = ({ item }: { item: SkillWithProgress }) => {
     const style = getSkillStyle(item.name);
     const progress = item.progress_percent || 0;
@@ -68,7 +113,7 @@ export default function SkillsScreen() {
         style={[styles.skillCard, { backgroundColor: style.color }]}
         onPress={() =>
           router.push({
-            pathname: '/skills/[skillId]',
+            pathname: '/skills/lesson01',
             params: { skillId: String(item.id) },
           })
         }
@@ -76,8 +121,7 @@ export default function SkillsScreen() {
       >
         <View style={styles.skillContent}>
           <MaterialCommunityIcons
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            name={style.icon as any}
+            name={style.icon as keyof typeof MaterialCommunityIcons.glyphMap}
             size={32}
             color="#fff"
             style={styles.skillIcon}
@@ -91,7 +135,7 @@ export default function SkillsScreen() {
             )}
           </View>
         </View>
-        
+
         {progress > 0 && (
           <View style={styles.progressContainer}>
             <View style={styles.progressBar}>
@@ -132,6 +176,11 @@ export default function SkillsScreen() {
         <Text style={[styles.subtitle, { color: colors.neutral?.['500'] || '#6b7280' }]}>
           Choose a skill to start learning
         </Text>
+        {profile && (
+          <Text style={[styles.stats, { color: colors.neutral?.['500'] || '#9ca3af' }]}>
+            XP Total: {profile.total_xp} | Nivel: {profile.level}
+          </Text>
+        )}
       </View>
 
       <FlatList
@@ -167,6 +216,10 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 16,
+  },
+  stats: {
+    fontSize: 14,
+    marginTop: 4,
   },
   listContent: {
     padding: 20,
