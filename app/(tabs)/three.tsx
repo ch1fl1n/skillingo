@@ -1,26 +1,44 @@
+// app/(tabs)/three.tsx
 import * as React from 'react';
-import { StyleSheet, View, Text, ScrollView, Image, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import EditScreenInfo from '@/components/EditScreenInfo';
+import { useRouter } from 'expo-router';
+import { useAuth } from '@/contexts/AuthContext';
+import { getCurrentUserProfile, getUserStreak } from '@/lib/db';
 
-// rutas a las imágenes subidas (usa exactamente estas rutas)
+// Mascot asset (ya lo tenías)
+import mascotImage from '@/assets/images/mascot/step4.jpeg';
+
+// Rutas "subidas" que proporcionaste (fallback)
 const HERO_IMAGE_URI = '/mnt/data/4c96c5e3-309b-4ac6-88cb-67303910a4f4.png';
 const SKILL_GRAPH_URI = '/mnt/data/c82faa0b-ab2e-4e0d-91b8-50200f7d7aa0.png';
 
-// Imports para obtener datos (igual que en index)
-import { useAuth } from '@/contexts/AuthContext';
-import { getCurrentUserProfile, getUserStreak } from '@/lib/db';
-import mascotImage from '@/assets/images/mascot/step4.jpeg';
+// Intentar resolver assets locales (si tienes los archivos dentro de /assets/images/)
+let heroImageSource: any;
+let graphImageSource: any;
+try {
+  // Si los pusiste en assets/images con estos nombres, descomenta o ajusta los require
+  // heroImageSource = require('../../assets/images/hero.png');
+  // graphImageSource = require('../../assets/images/skill_graph.png');
+
+  // Si no están como assets, usamos las URIs que diste (funciona en native si la ruta existe en tu entorno)
+  heroImageSource = { uri: HERO_IMAGE_URI };
+  graphImageSource = { uri: SKILL_GRAPH_URI };
+} catch {
+  heroImageSource = { uri: HERO_IMAGE_URI };
+  graphImageSource = { uri: SKILL_GRAPH_URI };
+}
 
 type IconName = 'message-text-outline' | 'account-group-outline' | 'lightbulb-on-outline' | 'puzzle';
 
 export default function TabThreeScreen() {
+  const router = useRouter();
   const { user } = useAuth();
 
   const [profile, setProfile] = React.useState<{ username: string | null; level: number | null; total_xp: number | null } | null>(null);
   const [streak, setStreak] = React.useState<number>(0);
-  const [loadingHeader, setLoadingHeader] = React.useState(true);
+  const [loadingHeader, setLoadingHeader] = React.useState<boolean>(true);
 
   React.useEffect(() => {
     const loadHeader = async () => {
@@ -46,7 +64,7 @@ export default function TabThreeScreen() {
     loadHeader();
   }, [user]);
 
-  // datos locales (si no hay datos reales)
+  // datos locales por si no hay datos reales
   const displayNameStatic = 'Ethan Carter';
   const levelStatic = 5;
   const xpTextStatic = '1200 XP';
@@ -57,18 +75,6 @@ export default function TabThreeScreen() {
     { id: 's4', name: 'Problem Solving', pct: 40, icon: 'puzzle' },
   ];
 
-  const displayName = profile?.username || user?.email?.split('@')[0] || displayNameStatic;
-  const level = profile?.level ?? levelStatic;
-
-  // parse seguro de XP
-  const parsedXP = parseInt(xpTextStatic.replace(/\D/g, ''), 10) || 0;
-  const totalXP = profile?.total_xp ?? parsedXP;
-
-  const xpForNextLevel = level * 100;
-  const currentLevelXP = totalXP % 100;
-  const xpProgress = xpForNextLevel > 0 ? (currentLevelXP / xpForNextLevel) * 100 : 0;
-
-  // Datos para la nueva sección "Skill Breakdown"
   const breakdown = [
     { id: 'b1', name: 'Communication', pct: 85 },
     { id: 'b2', name: 'Collaboration', pct: 78 },
@@ -76,9 +82,16 @@ export default function TabThreeScreen() {
     { id: 'b4', name: 'Critical Thinking', pct: 88 },
   ];
 
+  const displayName = profile?.username || user?.email?.split('@')[0] || displayNameStatic;
+  const level = profile?.level ?? levelStatic;
+  const parsedXP = parseInt(xpTextStatic.replace(/\D/g, ''), 10) || 0;
+  const totalXP = profile?.total_xp ?? parsedXP;
+  const xpForNextLevel = level * 100;
+  const currentLevelXP = totalXP % 100;
+  const xpProgress = xpForNextLevel > 0 ? (currentLevelXP / xpForNextLevel) * 100 : 0;
+
   return (
     <View style={styles.container}>
-      {/* Header (igual que index) */}
       <LinearGradient colors={['#2a2a2a', '#1a1a1a']} style={styles.headerGradient}>
         <View style={styles.header}>
           <View style={styles.profileSection}>
@@ -102,29 +115,19 @@ export default function TabThreeScreen() {
             </View>
           </View>
 
-          <View style={styles.statsRow}>
-            <TouchableOpacity style={styles.statCard} activeOpacity={0.7}>
-              <MaterialCommunityIcons name="fire" size={20} color="#ff6b35" />
-              <Text style={styles.statValue}>{loadingHeader ? '—' : streak}</Text>
-              <Text style={styles.statLabel}>Day Streak</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.statCard} activeOpacity={0.7}>
-              <MaterialCommunityIcons name="trophy" size={20} color="#ffd700" />
-              <Text style={styles.statValue}>{totalXP}</Text>
-              <Text style={styles.statLabel}>Total XP</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.statCard} activeOpacity={0.7}>
-              <MaterialCommunityIcons name="star" size={20} color="#00d4ff" />
-              <Text style={styles.statValue}>{level}</Text>
-              <Text style={styles.statLabel}>Level</Text>
+          {/* Reemplazamos statsRow por el botón Edit Profile */}
+          <View style={styles.actionRow}>
+            <TouchableOpacity
+              style={styles.editProfileButton}
+              activeOpacity={0.85}
+              onPress={() => router.push('/Not_seen/EditProfile')}
+            >
+              <Text style={styles.editProfileButtonText}>Edit Profile</Text>
             </TouchableOpacity>
           </View>
         </View>
       </LinearGradient>
 
-      {/* Content */}
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Current Lesson */}
         <View style={styles.card}>
@@ -135,12 +138,11 @@ export default function TabThreeScreen() {
           </View>
           <View style={styles.cardRight}>
             <View style={styles.lessonThumb}>
-              <Image source={{ uri: HERO_IMAGE_URI }} style={styles.lessonImage} />
+              <Image source={heroImageSource} style={styles.lessonImage} />
             </View>
           </View>
         </View>
 
-        {/* Skill Levels */}
         <Text style={styles.sectionTitle}>Skill Levels</Text>
         <View style={styles.skillsList}>
           {skills.map(s => (
@@ -161,7 +163,6 @@ export default function TabThreeScreen() {
           ))}
         </View>
 
-        {/* Achievements */}
         <Text style={styles.sectionTitle}>Achievements</Text>
         <View style={styles.achievementsRow}>
           <View style={styles.achCard}>
@@ -178,7 +179,6 @@ export default function TabThreeScreen() {
           </View>
         </View>
 
-        {/* --- Overall Skill Level + Graph (colocado justo después de Achievements) --- */}
         <View style={styles.overallSection}>
           <Text style={styles.overallLabel}>Overall Skill Level</Text>
           <Text style={styles.overallLevel}>Level 7</Text>
@@ -187,8 +187,7 @@ export default function TabThreeScreen() {
             <Text style={styles.overallGain}>+10%</Text>
           </View>
 
-          <Image source={{ uri: SKILL_GRAPH_URI }} style={styles.graphImage} resizeMode="contain" />
-
+          <Image source={graphImageSource} style={styles.graphImage} resizeMode="contain" />
           <View style={styles.graphAxis}>
             <Text style={styles.axisLabel}>Jan</Text>
             <Text style={styles.axisLabel}>Feb</Text>
@@ -196,7 +195,6 @@ export default function TabThreeScreen() {
           </View>
         </View>
 
-        {/* Skill Breakdown grid */}
         <Text style={[styles.sectionTitle, { marginTop: 8 }]}>Skill Breakdown</Text>
         <View style={styles.breakdownGrid}>
           {breakdown.map((b) => (
@@ -207,10 +205,7 @@ export default function TabThreeScreen() {
           ))}
         </View>
 
-        {/* Footer */}
-        <View style={{ marginTop: 24 }}>
-          <EditScreenInfo path="app/(tabs)/three.tsx" />
-        </View>
+        <View style={{ marginTop: 24, paddingBottom: 40 }} />
       </ScrollView>
     </View>
   );
@@ -261,10 +256,21 @@ const styles = StyleSheet.create({
   xpFill: { height: '100%', backgroundColor: '#00d4ff' },
   xpText: { color: '#999', fontSize: 12 },
 
-  statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
-  statCard: { flex: 1, backgroundColor: '#2a2a2a', borderRadius: 12, padding: 10, alignItems: 'center', marginHorizontal: 4 },
-  statValue: { color: '#fff', fontSize: 16, fontWeight: '700', marginTop: 6 },
-  statLabel: { color: '#999', fontSize: 12, marginTop: 2 },
+  // botón Edit Profile
+  actionRow: { marginTop: 12 },
+  editProfileButton: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  editProfileButtonText: {
+    color: '#000000',
+    fontSize: 16,
+    fontWeight: '700',
+  },
 
   content: { paddingHorizontal: 18, paddingTop: 18 },
   card: { flexDirection: 'row', backgroundColor: '#161718', borderRadius: 16, padding: 14, alignItems: 'center', marginBottom: 16 },
