@@ -45,7 +45,7 @@ export default function ChatScreen() {
       messages
         .map((m, i) => ({
           id: `${i}-${m.text.substring(0, 12)}`,
-          from: m.role === 'user' ? 'me' as 'me' : 'bot' as 'bot',
+          from: m.role === 'user' ? 'me' as const : 'bot' as const,
           text: m.text,
         }))
         .reverse(),

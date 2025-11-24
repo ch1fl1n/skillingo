@@ -3,7 +3,13 @@ import * as React from 'react';
 import { StyleSheet, View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import EditScreenInfo from '@/components/EditScreenInfo';
+
+// rutas a las imágenes subidas (usa exactamente estas rutas)
+const HERO_IMAGE_URI = '/mnt/data/4c96c5e3-309b-4ac6-88cb-67303910a4f4.png';
+const SKILL_GRAPH_URI = '/mnt/data/c82faa0b-ab2e-4e0d-91b8-50200f7d7aa0.png';
+
+// Imports para obtener datos (igual que en index)
 import { useAuth } from '@/contexts/AuthContext';
 import { getCurrentUserProfile, getUserStreak } from '@/lib/db';
 
@@ -138,7 +144,7 @@ export default function TabThreeScreen() {
           </View>
           <View style={styles.cardRight}>
             <View style={styles.lessonThumb}>
-              <Image source={heroImageSource} style={styles.lessonImage} />
+              <Image source={{ uri: HERO_IMAGE_URI }} style={styles.lessonImage} />
             </View>
           </View>
         </View>
@@ -187,7 +193,8 @@ export default function TabThreeScreen() {
             <Text style={styles.overallGain}>+10%</Text>
           </View>
 
-          <Image source={graphImageSource} style={styles.graphImage} resizeMode="contain" />
+          <Image source={{ uri: SKILL_GRAPH_URI }} style={styles.graphImage} resizeMode="contain" />
+
           <View style={styles.graphAxis}>
             <Text style={styles.axisLabel}>Jan</Text>
             <Text style={styles.axisLabel}>Feb</Text>

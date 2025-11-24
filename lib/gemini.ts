@@ -168,7 +168,7 @@ export async function generateStructured<T = unknown>(opts: StructuredOptions): 
   if (!jsonText) throw new Error('Respuesta vacía de Gemini (structured)');
   try {
     return JSON.parse(jsonText) as T;
-  } catch (_e) {
+  } catch {
     throw new Error('No se pudo parsear JSON estructurado');
   }
 }

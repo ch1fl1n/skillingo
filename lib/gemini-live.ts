@@ -60,7 +60,7 @@ export class GeminiLiveSession {
           const json = JSON.parse(msg.data);
           this.cbs.onMessageDebug?.(json);
           // Podrían venir metadatos, estados de turnos, etc.
-        } catch (e) {
+        } catch {
           // Texto plano inesperado
         }
       } else if (msg.data instanceof ArrayBuffer) {
