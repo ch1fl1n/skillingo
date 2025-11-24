@@ -139,6 +139,17 @@ export default function HomeScreen() {
         style={styles.headerGradient}
       >
         <View style={styles.header}>
+          {/* Icono del bombillo centrado en la parte superior */}
+          <View style={styles.bulbContainer}>
+            <TouchableOpacity
+              onPress={() => router.push('/Not_seen/Chatbot')}
+              activeOpacity={0.8}
+              style={styles.bulbButton}
+            >
+              <MaterialCommunityIcons name="lightbulb-on-outline" size={28} color="#ffd966" />
+            </TouchableOpacity>
+          </View>
+
           {/* Avatar and User Info */}
           <View style={styles.profileSection}>
             <View style={styles.avatarContainer}>
@@ -228,6 +239,21 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 20,
   },
+  // new bulb styles
+  bulbContainer: {
+    position: 'absolute',
+    top: 18,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  bulbButton: {
+    backgroundColor: 'transparent',
+    padding: 8,
+    borderRadius: 20,
+  },
+
   profileSection: {
     flexDirection: 'row',
     alignItems: 'center',
