@@ -14,7 +14,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getLessonById, trackLessonAttempt, awardXP } from '@/lib/db';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
-import QuizComponent from '@/components/lesson/QuizComponent';
+import QuizComponent from '@/components/QuizComponent';
 import type { Lesson, LessonStep } from '@/types/lesson.types';
 
 export default function LessonViewerScreen() {
