@@ -69,15 +69,7 @@ export type Database = {
           title?: string
           user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "community_posts_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       lesson_attempts: {
         Row: {
@@ -110,13 +102,6 @@ export type Database = {
             columns: ["lesson_id"]
             isOneToOne: false
             referencedRelation: "lessons"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lesson_attempts_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -183,13 +168,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "moderation_queue_moderator_id_fkey"
-            columns: ["moderator_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "moderation_queue_post_id_fkey"
             columns: ["post_id"]
             isOneToOne: false
@@ -228,11 +206,104 @@ export type Database = {
             referencedRelation: "community_posts"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      proficiency_milestones: {
+        Row: {
+          badge_icon: string | null
+          cefr_level: string
+          created_at: string
+          description: string
+          id: string
+          score_threshold: number
+          skill_id: number
+          title: string
+          unlocks: Json | null
+          xp_reward: number
+        }
+        Insert: {
+          badge_icon?: string | null
+          cefr_level: string
+          created_at?: string
+          description: string
+          id?: string
+          score_threshold: number
+          skill_id: number
+          title: string
+          unlocks?: Json | null
+          xp_reward?: number
+        }
+        Update: {
+          badge_icon?: string | null
+          cefr_level?: string
+          created_at?: string
+          description?: string
+          id?: string
+          score_threshold?: number
+          skill_id?: number
+          title?: string
+          unlocks?: Json | null
+          xp_reward?: number
+        }
+        Relationships: [
           {
-            foreignKeyName: "post_ratings_user_id_fkey"
-            columns: ["user_id"]
+            foreignKeyName: "proficiency_milestones_skill_id_fkey"
+            columns: ["skill_id"]
             isOneToOne: false
-            referencedRelation: "users"
+            referencedRelation: "skills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      skill_proficiency_scores: {
+        Row: {
+          assessments_completed: number
+          cefr_level: string
+          confidence_interval: number | null
+          created_at: string
+          current_score: number
+          id: string
+          last_assessment_date: string | null
+          next_assessment_date: string | null
+          previous_score: number | null
+          skill_id: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assessments_completed?: number
+          cefr_level: string
+          confidence_interval?: number | null
+          created_at?: string
+          current_score?: number
+          id?: string
+          last_assessment_date?: string | null
+          next_assessment_date?: string | null
+          previous_score?: number | null
+          skill_id: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assessments_completed?: number
+          cefr_level?: string
+          confidence_interval?: number | null
+          created_at?: string
+          current_score?: number
+          id?: string
+          last_assessment_date?: string | null
+          next_assessment_date?: string | null
+          previous_score?: number | null
+          skill_id?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skill_proficiency_scores_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
             referencedColumns: ["id"]
           },
         ]
@@ -282,13 +353,6 @@ export type Database = {
             referencedRelation: "achievements"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "user_achievements_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
         ]
       }
       user_progress: {
@@ -321,47 +385,43 @@ export type Database = {
             referencedRelation: "skills"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "user_progress_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
         ]
       }
       users: {
         Row: {
           avatar_url: string | null
-          created_at: string | null
+          created_at: string
           email: string
           id: string
-          level: number | null
-          password_hash: string
-          role: string | null
-          total_xp: number | null
+          level: number
+          password_hash: string | null
+          role: string
+          total_xp: number
+          updated_at: string | null
           username: string
         }
         Insert: {
           avatar_url?: string | null
-          created_at?: string | null
+          created_at?: string
           email: string
-          id?: string
-          level?: number | null
-          password_hash: string
-          role?: string | null
-          total_xp?: number | null
+          id: string
+          level?: number
+          password_hash?: string | null
+          role?: string
+          total_xp?: number
+          updated_at?: string | null
           username: string
         }
         Update: {
           avatar_url?: string | null
-          created_at?: string | null
+          created_at?: string
           email?: string
           id?: string
-          level?: number | null
-          password_hash?: string
-          role?: string | null
-          total_xp?: number | null
+          level?: number
+          password_hash?: string | null
+          role?: string
+          total_xp?: number
+          updated_at?: string | null
           username?: string
         }
         Relationships: []

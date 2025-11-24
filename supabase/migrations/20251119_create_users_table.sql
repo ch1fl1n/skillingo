@@ -15,27 +15,6 @@ CREATE TABLE public.users (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Enable RLS
-ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
-
--- Policy: Users can read their own profile
-CREATE POLICY "Users can view own profile"
-  ON public.users
-  FOR SELECT
-  USING (auth.uid() = id);
-
--- Policy: Users can update their own profile
-CREATE POLICY "Users can update own profile"
-  ON public.users
-  FOR UPDATE
-  USING (auth.uid() = id);
-
--- Policy: System can insert new users (for registration)
-CREATE POLICY "Enable insert for authenticated users"
-  ON public.users
-  FOR INSERT
-  WITH CHECK (auth.uid() = id);
-
 -- Function to handle new user creation
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$

@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { StyleSheet, View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, Image, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import EditScreenInfo from '@/components/EditScreenInfo';
@@ -12,6 +12,8 @@ const SKILL_GRAPH_URI = '/mnt/data/c82faa0b-ab2e-4e0d-91b8-50200f7d7aa0.png';
 import { useAuth } from '@/contexts/AuthContext';
 import { getCurrentUserProfile, getUserStreak } from '@/lib/db';
 import mascotImage from '@/assets/images/mascot/step4.jpeg';
+
+type IconName = 'message-text-outline' | 'account-group-outline' | 'lightbulb-on-outline' | 'puzzle';
 
 export default function TabThreeScreen() {
   const { user } = useAuth();
@@ -48,8 +50,7 @@ export default function TabThreeScreen() {
   const displayNameStatic = 'Ethan Carter';
   const levelStatic = 5;
   const xpTextStatic = '1200 XP';
-  const weeklyProgress = 3; // de 5
-  const skills = [
+  const skills: Array<{ id: string; name: string; pct: number; icon: IconName }> = [
     { id: 's1', name: 'Communication', pct: 80, icon: 'message-text-outline' },
     { id: 's2', name: 'Collaboration', pct: 60, icon: 'account-group-outline' },
     { id: 's3', name: 'Creativity', pct: 90, icon: 'lightbulb-on-outline' },
@@ -145,7 +146,7 @@ export default function TabThreeScreen() {
           {skills.map(s => (
             <View key={s.id} style={styles.skillRow}>
               <View style={styles.skillIcon}>
-                <MaterialCommunityIcons name={s.icon as any} size={20} color="#fff" />
+                <MaterialCommunityIcons name={s.icon} size={20} color="#fff" />
               </View>
               <View style={styles.skillInfo}>
                 <View style={styles.skillTop}>

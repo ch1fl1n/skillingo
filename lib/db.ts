@@ -385,3 +385,145 @@ export async function getUserStreak(): Promise<number> {
 
   return streak
 }
+
+// 🎓 CATEGORY-BASED UTILITIES
+// 
+// ¡Funciones auxiliares para obtener progreso agrupado por categoría!
+// Estas funciones responden la pregunta: "¿En qué categoría del siglo XXI
+// está progresando el estudiante?"
+//
+export async function getSkillsByCategory(category: string) {
+  const { data, error } = await supabase
+    .from('skills')
+    .select('id, name, description, category')
+    .eq('category', category)
+    .order('name', { ascending: true })
+  
+  if (error) throw error
+  return data
+}
+
+/**
+ * 💯 Obtener estadísticas de progreso por categoría específica
+ * 
+ * Retorna: cuántas habilidades hay, cuántas completó, progreso promedio
+ */
+export async function getCategoryStats(userId: string, category: string) {
+  // 🔍 Paso 1: Obtener todas las habilidades en la categoría
+  const { data: categorySkills, error: skillsError } = await supabase
+    .from('skills')
+    .select('id')
+    .eq('category', category)
+  
+  if (skillsError) throw skillsError
+  
+  const skillIds = categorySkills?.map(s => s.id) || []
+  const totalSkills = skillIds.length
+  
+  if (totalSkills === 0) {
+    return {
+      category,
+      total_skills: 0,
+      completed_skills: 0,
+      average_progress: 0,
+      category_mastered: false,
+    }
+  }
+  
+  // 🎯 Paso 2: Obtener progreso del usuario
+  const { data: userProgress, error: progressError } = await supabase
+    .from('user_progress')
+    .select('progress_percent')
+    .eq('user_id', userId)
+    .in('skill_id', skillIds)
+  
+  if (progressError && !progressError.message.includes('No rows')) throw progressError
+  
+  const progressList = userProgress?.map(p => p.progress_percent) || []
+  const completedCount = progressList.filter(p => p >= 100).length
+  const avgProgress = progressList.length > 0
+    ? Math.round(progressList.reduce((a, b) => a + b, 0) / progressList.length)
+    : 0
+  
+  return {
+    category,
+    total_skills: totalSkills,
+    completed_skills: completedCount,
+    average_progress: avgProgress,
+    category_mastered: completedCount === totalSkills && totalSkills > 0,
+  }
+}
+
+/**
+ * 🌟 Obtener progreso en TODAS las categorías de una vez
+ * 
+ * ¡Perfecto para dashboards! Retorna array con estadísticas completas
+ * de cada categoría del marco de competencias del siglo XXI
+ */
+export async function getAllCategoryStats(userId: string) {
+  const categories = ['Skills', 'Character', 'Meta-Learning']
+  const stats = []
+  
+  for (const category of categories) {
+    const categoryStat = await getCategoryStats(userId, category)
+    stats.push(categoryStat)
+  }
+  
+  return stats
+}
+
+/**
+ * 🎯 Sugerir próxima habilidad a aprender basada en categoría débil
+ * 
+ * Algoritmo inteligente que sugiere dónde el estudiante debe enfocarse
+ * para un crecimiento equilibrado en las competencias del siglo XXI
+ */
+export async function suggestNextSkillByCategory(userId: string) {
+  const allStats = await getAllCategoryStats(userId)
+  
+  // 🔍 Encontrar categoría con menor progreso
+  const weakestCategory = allStats.reduce((prev, current) =>
+    prev.average_progress < current.average_progress ? prev : current
+  )
+  
+  if (weakestCategory.average_progress >= 100) {
+    return { suggestion: 'Todas las categorías dominadas!', category: null }
+  }
+  
+  // 📚 Obtener una habilidad incompleta de esa categoría
+  const { data: incompleteLessons, error } = await supabase
+    .from('skills')
+    .select('id, name')
+    .eq('category', weakestCategory.category)
+    .order('name', { ascending: true })
+    .limit(1)
+  
+  if (error) throw error
+  
+  return {
+    suggestion: `Enfócate en ${weakestCategory.category}`,
+    category: weakestCategory.category,
+    recommended_skill: incompleteLessons?.[0] || null,
+  }
+}
+
+/**
+ * 📊 Obtener resumen educativo: ¿Cuál es la fortaleza del estudiante?
+ * 
+ * Responde: "¿En cuál categoría del siglo XXI destaca más este estudiante?"
+ * Útil para reconocimiento y motivación
+ */
+export async function getStudentStrength(userId: string) {
+  const allStats = await getAllCategoryStats(userId)
+  
+  const strongest = allStats.reduce((prev, current) =>
+    prev.average_progress > current.average_progress ? prev : current
+  )
+  
+  return {
+    strength_category: strongest.category,
+    mastery_level: strongest.average_progress,
+    is_mastered: strongest.category_mastered,
+    strength_summary: `${strongest.category}: ${strongest.completed_skills}/${strongest.total_skills} completadas`,
+  }
+}

@@ -15,7 +15,6 @@ export default function ModalPostScreen() {
   const router = useRouter();
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
-  const [category, setCategory] = useState('');
 
   return (
     <View style={styles.container}>
@@ -55,7 +54,7 @@ export default function ModalPostScreen() {
         {/* Category dropdown (fake for now) */}
         <TouchableOpacity style={styles.dropdown} onPress={() => {/* abrir modal/categories */}}>
           <Text style={styles.dropdownText}>
-            {category ? category : 'Select Category'}
+            Select Category
           </Text>
           <MaterialCommunityIcons name="chevron-down" size={22} color="#9ca3af" style={{ marginLeft: 6 }} />
         </TouchableOpacity>
