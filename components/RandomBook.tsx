@@ -9,6 +9,7 @@ import {
   useWindowDimensions,
   StyleSheet,
   Animated,
+  Dimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -33,10 +34,13 @@ export default function RandomBook(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState(true);
   const { width: SCREEN_W, height: SCREEN_H } = useWindowDimensions();
-  const leftCenter = { x: 8, y: Math.round(SCREEN_H / 2 - BUBBLE_SIZE / 2) };
-  const initialPos = FIXED_LEFT_CENTER ? leftCenter : { x: SCREEN_W - BUBBLE_SIZE - 16, y: SCREEN_H - BUBBLE_SIZE - 120 };
+  const initialWindow = Dimensions.get('window');
+  const effectiveW = SCREEN_W || initialWindow.width;
+  const effectiveH = SCREEN_H || initialWindow.height;
+  const leftCenter = { x: 8, y: Math.round(effectiveH / 2 - BUBBLE_SIZE / 2) };
+  const initialPos = FIXED_LEFT_CENTER ? leftCenter : { x: effectiveW - BUBBLE_SIZE - 16, y: effectiveH - BUBBLE_SIZE - 120 };
   const [pos, setPos] = useState(initialPos);
-  const animatedPos = useRef(new Animated.ValueXY({ x: pos.x, y: pos.y })).current;
+  const animatedPos = useRef(new Animated.ValueXY({ x: Number(initialPos.x || 8), y: Number(initialPos.y || 8) })).current;
   const dragState = useRef({ dragging: false });
 
   const panStart = useRef({ x: 0, y: 0 });
