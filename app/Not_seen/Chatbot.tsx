@@ -12,17 +12,21 @@ import {
   Platform,
   ActivityIndicator,
   DeviceEventEmitter,
+  Modal,
+  ScrollView,
+  Dimensions
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 
-// IMPORTS desde tu lib/gemini (usa tus archivos nuevos)
+// IMPORTS desde tu lib/gemini
 import { safeGenerateChat, approximateTokens, ChatMessage } from '../../lib/gemini';
 
-// Avatar asset (asegúrate de tener /assets/images/icon.png)
+// Avatar asset
 import botAsset from '../../assets/images/icon.png';
 
 const BOT_AVATAR = botAsset;
+const { width } = Dimensions.get('window');
 
 type MsgUi = {
   id: string;
@@ -31,6 +35,46 @@ type MsgUi = {
   time?: string;
 };
 
+// --- DATOS DE LOS PLANES BOMBI AI ---
+const PLANS = [
+  {
+    id: 1,
+    title: 'Bombi AI Plus',
+    description: 'Aumenta tu productividad con acceso ampliado a la IA de Bombi y mayor almacenamiento.',
+    storage: '200 GB',
+    subtext: 'Aplicación Bombi y más',
+    price: '3,99 €',
+    oldPrice: '7,99 €',
+    duration: 'al mes durante 2 meses',
+    btnText: 'Aprovechar oferta',
+    isNew: true,
+  },
+  {
+    id: 2,
+    title: 'Bombi AI Pro',
+    description: 'Acceso superior a la IA de Bombi para una productividad ilimitada, además de almacenamiento amplio.',
+    storage: '2 TB',
+    subtext: 'Aplicación Bombi y más',
+    price: '0 €',
+    oldPrice: '21,99 €',
+    duration: 'durante el primer mes',
+    btnText: 'Iniciar prueba',
+    isNew: false,
+  },
+  {
+    id: 3,
+    title: 'Bombi AI Ultra',
+    description: 'Ve más allá de lo posible con acceso completo a la IA de Bombi y el máximo almacenamiento.',
+    storage: '30 TB',
+    subtext: 'Aplicación Bombi y más',
+    price: '139,99 €',
+    oldPrice: '274,99 €',
+    duration: 'al mes durante 3 meses',
+    btnText: 'Aprovechar oferta',
+    isNew: false,
+  },
+];
+
 export default function ChatScreen() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: 'model', text: 'Hola, soy Bombi. ¿En qué te ayudo hoy?' },
@@ -38,6 +82,9 @@ export default function ChatScreen() {
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // ESTADO PARA EL MODAL DE SUSCRIPCIÓN
+  const [modalVisible, setModalVisible] = useState(false);
 
   // Map messages -> UI (inverted for FlatList)
   const messagesUi: MsgUi[] = useMemo(
@@ -133,6 +180,72 @@ export default function ChatScreen() {
 
   return (
     <View style={styles.container}>
+      
+      {/* --- MODAL DE SUSCRIPCIÓN --- */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            {/* Botón cerrar modal */}
+            <TouchableOpacity 
+              style={styles.closeModalBtn} 
+              onPress={() => setModalVisible(false)}
+            >
+              <MaterialCommunityIcons name="close" size={24} color="#fff" />
+            </TouchableOpacity>
+
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false} 
+              contentContainerStyle={styles.plansContainer}
+              decelerationRate="fast"
+              snapToInterval={width * 0.85 + 20} // Ancho tarjeta + margen
+            >
+              {PLANS.map((plan) => (
+                <View style={styles.planCard} key={plan.id}>
+                  {plan.isNew && (
+                    <View style={styles.newBadge}>
+                      <Text style={styles.newBadgeText}>Nuevo</Text>
+                    </View>
+                  )}
+                  
+                  <Text style={styles.planTitle}>{plan.title}</Text>
+                  <Text style={styles.planDesc}>{plan.description}</Text>
+                  
+                  <View style={styles.separator} />
+                  
+                  <Text style={styles.planStorage}>{plan.storage}</Text>
+                  <Text style={styles.planSubtext}>{plan.subtext}</Text>
+                  
+                  <View style={styles.priceContainer}>
+                     <Text style={styles.oldPrice}>{plan.oldPrice}</Text>
+                     <Text style={styles.planDuration}> al mes</Text>
+                  </View>
+                  
+                  <View style={styles.currentPriceRow}>
+                    <Text style={styles.currentPrice}>{plan.price}</Text>
+                    <Text style={styles.planDuration}> {plan.duration}</Text>
+                  </View>
+
+                  <TouchableOpacity>
+                    <Text style={styles.linkText}>Ver características del plan +</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity style={styles.planButton}>
+                    <Text style={styles.planButtonText}>{plan.btnText}</Text>
+                    <MaterialCommunityIcons name="arrow-right" size={16} color="#fff" style={{marginLeft: 4}} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.push('/')} style={styles.backBtn}>
@@ -145,9 +258,17 @@ export default function ChatScreen() {
           <Text style={styles.headerSubtitle}>Chat Bot</Text>
         </View>
 
-        <TouchableOpacity style={styles.menuBtn}>
-          <MaterialCommunityIcons name="dots-vertical" size={22} color="#e6e6e6" />
-        </TouchableOpacity>
+        {/* CONTENEDOR BOTONES HEADER */}
+        <View style={{ flexDirection: 'row' }}>
+          {/* BOTÓN PLUS QUE ABRE EL MODAL */}
+          <TouchableOpacity style={styles.menuBtn} onPress={() => setModalVisible(true)}>
+             <MaterialCommunityIcons name="plus-circle-outline" size={24} color="#4da6ff" />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuBtn}>
+            <MaterialCommunityIcons name="dots-vertical" size={22} color="#e6e6e6" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* timestamp */}
@@ -219,6 +340,11 @@ const PALETTE = {
   textDark: '#141414',
   neutral: '#9aa0a6',
   inputBg: '#2b2b2b',
+  // Colores para el modal
+  modalBg: 'rgba(0,0,0,0.85)',
+  cardBg: '#000000', // Fondo negro puro o muy oscuro para las tarjetas
+  cardBorder: '#1a73e8', // Azul de Google/Bombi
+  btnBlue: '#1a73e8',
 };
 
 const styles = StyleSheet.create({
@@ -230,6 +356,7 @@ const styles = StyleSheet.create({
     backgroundColor: PALETTE.header,
     flexDirection: 'row',
     alignItems: 'flex-start',
+    justifyContent: 'space-between', // Ajustado para distribuir espacio
   },
   backBtn: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center', marginRight: 8, marginTop: 6 },
   headerCenter: { flex: 1, alignItems: 'center', flexDirection: 'column' },
@@ -280,4 +407,135 @@ const styles = StyleSheet.create({
   emojiBtn: { marginLeft: 6, marginRight: 4, padding: 6 },
   micBtn: { marginLeft: 6, marginRight: 4, padding: 6 },
   sendBtn: { marginLeft: 10, backgroundColor: '#cbd5e1', width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+
+  // --- STYLES DEL MODAL ---
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: PALETTE.modalBg,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '100%',
+    height: '70%', // Ocupa buena parte de la pantalla
+    justifyContent: 'center',
+  },
+  closeModalBtn: {
+    position: 'absolute',
+    top: -50,
+    right: 20,
+    backgroundColor: '#333',
+    borderRadius: 20,
+    padding: 8,
+    zIndex: 10,
+  },
+  plansContainer: {
+    paddingHorizontal: 20,
+    alignItems: 'center',
+  },
+  planCard: {
+    width: width * 0.85, // 85% del ancho de pantalla
+    backgroundColor: PALETTE.cardBg,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: PALETTE.cardBorder,
+    padding: 24,
+    marginRight: 15, // Espacio entre tarjetas
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    // Sombra (solo funciona bien en iOS, en Android usa elevation)
+    shadowColor: PALETTE.cardBorder,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  newBadge: {
+    position: 'absolute',
+    top: 15,
+    backgroundColor: '#fff',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  newBadgeText: {
+    color: '#000',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  planTitle: {
+    color: '#4da6ff', // Azul clarito para el título
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginTop: 15,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  planDesc: {
+    color: '#ccc',
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 15,
+    lineHeight: 20,
+  },
+  separator: {
+    height: 1,
+    width: '20%',
+    backgroundColor: '#333',
+    marginVertical: 10,
+  },
+  planStorage: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  planSubtext: {
+    color: '#ccc',
+    fontSize: 12,
+    marginBottom: 15,
+  },
+  priceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  oldPrice: {
+    color: '#777',
+    fontSize: 14,
+    textDecorationLine: 'line-through',
+  },
+  currentPriceRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: 5,
+  },
+  currentPrice: {
+    color: '#fff',
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  planDuration: {
+    color: '#ccc',
+    fontSize: 12,
+  },
+  linkText: {
+    color: '#8ab4f8',
+    fontSize: 12,
+    textDecorationLine: 'underline',
+    marginBottom: 20,
+    marginTop: 10,
+  },
+  planButton: {
+    backgroundColor: PALETTE.btnBlue,
+    width: '100%',
+    paddingVertical: 14,
+    borderRadius: 25,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  planButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 15,
+  },
 });

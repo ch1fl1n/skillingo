@@ -12,7 +12,6 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-<<<<<<< Updated upstream
 import {
   usePostDetail,
   useLikePost,
@@ -21,22 +20,6 @@ import {
   useCreateComment,
   useCommunityCleanup,
 } from '@/hooks/useCommunity';
-=======
-import { 
-  getCommunityPostById, 
-  ratePost, 
-  getMyPostRating,
-  likePost,
-  unlikePost,
-  isPostLikedByMe,
-  getPostComments,
-  createComment,
-  deleteCommunityPost,
-  deleteComment,
-} from '@/lib/db';
-import { useAuth } from '@/contexts/AuthContext';
-import type { Tables } from '@/types/database.types';
->>>>>>> Stashed changes
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
 
@@ -48,7 +31,6 @@ export default function PostDetailScreen() {
   const colors = Colors[colorScheme ?? 'light'];
   const { user } = useAuth();
 
-<<<<<<< Updated upstream
   // Cleanup debounce timers on unmount
   useCommunityCleanup();
 
@@ -65,26 +47,6 @@ export default function PostDetailScreen() {
   const { comments, addComment: addCommentToList } = usePostComments(postId);
   const { createComment, loading: commentLoading } = useCreateComment();
 
-=======
-  const [post, setPost] = useState<CommunityPost | null>(null);
-  const [myRating, setMyRating] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [ratingLoading, setRatingLoading] = useState(false);
-  
-  // Likes state
-  const [isLiked, setIsLiked] = useState(false);
-  const [likesCount, setLikesCount] = useState(0);
-  
-  // Comments state
-  const [comments, setComments] = useState<Array<{
-    id: number;
-    content: string;
-    created_at: string;
-    user_id: string;
-    users: { username: string; avatar_url: string | null; level: number } | null;
-  }>>([]);
->>>>>>> Stashed changes
   const [commentText, setCommentText] = useState('');
   const [commentsExpanded, setCommentsExpanded] = useState(false);
   const [ratingLoading, setRatingLoading] = useState(false);
@@ -92,38 +54,9 @@ export default function PostDetailScreen() {
   // Memoized post data to prevent unnecessary re-renders
   const post = useMemo(() => postDetailData?.post, [postDetailData?.post]);
 
-<<<<<<< Updated upstream
   // Memoized handler for rating with loading state
   const handleRateWithLoading = useCallback(
     async (newRating: number) => {
-=======
-  const loadPost = async () => {
-    try {
-      setLoading(true);
-      const [postData, ratingData, likedStatus, commentsData] = await Promise.all([
-        getCommunityPostById(postId),
-        getMyPostRating(postId),
-        isPostLikedByMe(postId),
-        getPostComments(postId),
-      ]);
-      setPost(postData);
-      setMyRating(ratingData);
-      setIsLiked(likedStatus);
-      setLikesCount((postData as any).likes_count || 0);
-      console.log('Loaded comments:', commentsData);
-      console.log('Current user ID:', user?.id);
-      setComments(commentsData);
-    } catch (err) {
-      console.error('Error loading post:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load post');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRate = async (rating: number) => {
-    try {
->>>>>>> Stashed changes
       setRatingLoading(true);
       try {
         await handleRate(newRating);
