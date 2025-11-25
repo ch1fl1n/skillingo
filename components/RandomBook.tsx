@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   PanResponder,
-  Dimensions,
+  useWindowDimensions,
   StyleSheet,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -21,7 +21,7 @@ const STORAGE_POS = '@RandomBook:pos';
 const STORAGE_COLLAPSED = '@RandomBook:collapsed';
 const STORAGE_BOOK = '@RandomBook:book';
 
-const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
+// We'll read dimensions dynamically so the bubble behaves correctly on rotation and different devices
 const BUBBLE_SIZE = 64;
 
 export default function RandomBook(): JSX.Element {
@@ -29,6 +29,7 @@ export default function RandomBook(): JSX.Element {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState(true);
+  const { width: SCREEN_W, height: SCREEN_H } = useWindowDimensions();
   const [pos, setPos] = useState({ x: SCREEN_W - BUBBLE_SIZE - 16, y: SCREEN_H - BUBBLE_SIZE - 120 });
 
   const panStart = useRef({ x: 0, y: 0 });
@@ -64,6 +65,12 @@ export default function RandomBook(): JSX.Element {
     AsyncStorage.setItem(STORAGE_POS, JSON.stringify(pos)).catch(() => {});
   }, [pos]);
 
+  // Keep bubble within bounds when orientation/dimensions change
+  useEffect(() => {
+    setPos((p) => clampPos(p));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [SCREEN_W, SCREEN_H]);
+
   useEffect(() => {
     AsyncStorage.setItem(STORAGE_COLLAPSED, String(collapsed)).catch(() => {});
   }, [collapsed]);
@@ -80,8 +87,14 @@ export default function RandomBook(): JSX.Element {
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
+      // Don't claim responder on start (avoids interfering with ScrollView)
+      onStartShouldSetPanResponder: () => false,
+      // Start responding only when there's a clear drag gesture
+      onMoveShouldSetPanResponder: (_evt, gestureState) => {
+        const dx = Math.abs(gestureState.dx || 0);
+        const dy = Math.abs(gestureState.dy || 0);
+        return dx > 6 || dy > 6; // small threshold
+      },
       onPanResponderGrant: () => {
         panStart.current = { x: pos.x, y: pos.y };
       },
@@ -107,6 +120,7 @@ export default function RandomBook(): JSX.Element {
         for (const lim of limits) {
           try {
             const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(seed)}&limit=${lim}`;
+            // Some mobile environments can be restrictive; add a try/catch and small timeout behavior
             const res = await fetch(url, {
               headers: {
                 Accept: 'application/json',
