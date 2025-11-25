@@ -128,4 +128,108 @@ export function subscribeUserStats(userId: string, handler: () => void) {
   return () => { supabase.removeChannel(channel); };
 }
 
+/**
+ * --- Bombillos (wallet) client helpers ---
+ * These helpers call the public tables/RPC for wallet data.
+ * They are defensive: they resolve to `null`/empty arrays and log warnings
+ * if the server RPC/tables are not yet present or if RLS prevents access.
+ */
+
+export async function getBombillosBalance(userId?: string): Promise<number | null> {
+  try {
+    const uid = userId ?? (await currentUserId());
+    if (!uid) return null;
+    const { data, error } = await supabase
+      .from('wallets')
+      .select('balance')
+      .eq('user_id', uid)
+      .single();
+    if (error) {
+      console.warn('getBombillosBalance: select error', error);
+      return null;
+    }
+    return (data?.balance ?? null) as number | null;
+  } catch (e) {
+    console.error('getBombillosBalance error', e);
+    return null;
+  }
+}
+
+export type WalletTransaction = {
+  id: string;
+  user_id: string;
+  amount: number;
+  type: string;
+  metadata: any;
+  created_at: string;
+};
+
+export async function getBombillosTransactions(userId?: string, limit = 20): Promise<WalletTransaction[]> {
+  try {
+    const uid = userId ?? (await currentUserId());
+    if (!uid) return [];
+    const { data, error } = await supabase
+      .from('wallet_transactions')
+      .select('*')
+      .eq('user_id', uid)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error) {
+      console.warn('getBombillosTransactions: select error', error);
+      return [];
+    }
+    return (data ?? []) as WalletTransaction[];
+  } catch (e) {
+    console.error('getBombillosTransactions error', e);
+    return [];
+  }
+}
+
+/**
+ * Attempts to create a wallet transaction via the Postgres RPC `create_wallet_transaction`.
+ * Parameters:
+ *  - amount: positive to credit, negative to debit
+ *  - type: string enum describing the reason (e.g. 'earn', 'spend', 'reward')
+ *  - idempotencyKey: client-generated id to avoid double-charges
+ *  - metadata: optional JSON
+ */
+export async function createBombillosTransaction(opts: {
+  amount: number;
+  type: string;
+  idempotencyKey: string;
+  metadata?: Record<string, unknown> | null;
+}) {
+  try {
+    const payload = {
+      p_amount: opts.amount,
+      p_type: opts.type,
+      p_idempotency_key: opts.idempotencyKey,
+      p_metadata: opts.metadata ?? {},
+    };
+
+    // RPC should enforce min/max bounds (0..1000). We call it and return the result.
+    const { data, error } = await supabase.rpc('create_wallet_transaction', payload as any);
+    if (error) {
+      console.warn('createBombillosTransaction: rpc error', error);
+      return { error, data: null };
+    }
+    return { data, error: null };
+  } catch (e) {
+    console.error('createBombillosTransaction error', e);
+    return { error: e, data: null };
+  }
+}
+
+export function subscribeToWallet(userId: string, handler: () => void) {
+  const channel = supabase.channel(`wallets_${userId}`)
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'wallets',
+      filter: `user_id=eq.${userId}`,
+    }, handler)
+    .subscribe();
+  return () => { supabase.removeChannel(channel); };
+}
+
 

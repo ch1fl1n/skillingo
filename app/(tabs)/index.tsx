@@ -8,6 +8,7 @@ import { getCurrentUserProfile, getUserStreak, getSkills } from '@/lib/db';
 import type { SkillWithProgress } from '@/types/lesson.types';
 
 import mascotImage from '@/assets/images/mascot/step4.jpeg';
+import RandomBook from '@/components/RandomBook';
 
 // Map skill names to colors and icons (matching the skills list screen)
 const SKILL_STYLES: Record<string, { color: string; icon: string }> = {
@@ -216,6 +217,8 @@ export default function HomeScreen() {
           <Text style={styles.emptyText}>No skills available yet</Text>
         )}
       </ScrollView>
+      {/* Floating Random Book bubble (persistent) */}
+      <RandomBook />
     </View>
   );
 }
