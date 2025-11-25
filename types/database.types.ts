@@ -389,11 +389,14 @@ export type Database = {
       }
       users: {
         Row: {
+          avatar_path: string | null
           avatar_url: string | null
           created_at: string
           email: string
+          gender: string | null
           id: string
           level: number
+          location: string | null
           password_hash: string | null
           role: string
           total_xp: number
@@ -401,11 +404,14 @@ export type Database = {
           username: string
         }
         Insert: {
+          avatar_path?: string | null
           avatar_url?: string | null
           created_at?: string
           email: string
+          gender?: string | null
           id: string
           level?: number
+          location?: string | null
           password_hash?: string | null
           role?: string
           total_xp?: number
@@ -413,11 +419,14 @@ export type Database = {
           username: string
         }
         Update: {
+          avatar_path?: string | null
           avatar_url?: string | null
           created_at?: string
           email?: string
+          gender?: string | null
           id?: string
           level?: number
+          location?: string | null
           password_hash?: string | null
           role?: string
           total_xp?: number

@@ -1,9 +1,9 @@
 // app/(tabs)/three.tsx
 import * as React from 'react';
-import { StyleSheet, View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, Image, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import EditScreenInfo from '@/components/EditScreenInfo';
+import { useRouter } from 'expo-router';
 
 // rutas a las imágenes subidas (usa exactamente estas rutas)
 const HERO_IMAGE_URI = '/mnt/data/4c96c5e3-309b-4ac6-88cb-67303910a4f4.png';
@@ -11,30 +11,10 @@ const SKILL_GRAPH_URI = '/mnt/data/c82faa0b-ab2e-4e0d-91b8-50200f7d7aa0.png';
 
 // Imports para obtener datos (igual que en index)
 import { useAuth } from '@/contexts/AuthContext';
-import { getCurrentUserProfile, getUserStreak } from '@/lib/db';
+import { getCurrentUserProfile } from '@/lib/db';
 
 // Mascot asset (ya lo tenías)
 import mascotImage from '@/assets/images/mascot/step4.jpeg';
-
-// Rutas "subidas" que proporcionaste (fallback)
-const HERO_IMAGE_URI = '/mnt/data/4c96c5e3-309b-4ac6-88cb-67303910a4f4.png';
-const SKILL_GRAPH_URI = '/mnt/data/c82faa0b-ab2e-4e0d-91b8-50200f7d7aa0.png';
-
-// Intentar resolver assets locales (si tienes los archivos dentro de /assets/images/)
-let heroImageSource: any;
-let graphImageSource: any;
-try {
-  // Si los pusiste en assets/images con estos nombres, descomenta o ajusta los require
-  // heroImageSource = require('../../assets/images/hero.png');
-  // graphImageSource = require('../../assets/images/skill_graph.png');
-
-  // Si no están como assets, usamos las URIs que diste (funciona en native si la ruta existe en tu entorno)
-  heroImageSource = { uri: HERO_IMAGE_URI };
-  graphImageSource = { uri: SKILL_GRAPH_URI };
-} catch {
-  heroImageSource = { uri: HERO_IMAGE_URI };
-  graphImageSource = { uri: SKILL_GRAPH_URI };
-}
 
 type IconName = 'message-text-outline' | 'account-group-outline' | 'lightbulb-on-outline' | 'puzzle';
 
@@ -43,27 +23,15 @@ export default function TabThreeScreen() {
   const { user } = useAuth();
 
   const [profile, setProfile] = React.useState<{ username: string | null; level: number | null; total_xp: number | null } | null>(null);
-  const [streak, setStreak] = React.useState<number>(0);
-  const [loadingHeader, setLoadingHeader] = React.useState<boolean>(true);
 
   React.useEffect(() => {
     const loadHeader = async () => {
-      if (!user) {
-        setLoadingHeader(false);
-        return;
-      }
+      if (!user) return;
       try {
-        setLoadingHeader(true);
-        const [profileData, streakCount] = await Promise.all([
-          getCurrentUserProfile(),
-          getUserStreak(),
-        ]);
+        const profileData = await getCurrentUserProfile();
         setProfile(profileData);
-        setStreak(streakCount);
       } catch (err) {
-        console.warn('Error loading profile/header data:', err);
-      } finally {
-        setLoadingHeader(false);
+        console.warn('Error loading profile data:', err);
       }
     };
 

@@ -3,6 +3,7 @@
     "name": "Skillingo",
     "slug": "Skillingo",
     "version": "1.0.0",
+    "runtimeVersion": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "skillingo",
@@ -11,18 +12,21 @@
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#1a1a1a"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.skillingo.app",
+      "usesIcloudStorage": false
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#1a1a1a"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.skillingo.app"
     },
     "web": {
       "bundler": "metro",
@@ -33,10 +37,15 @@
       "expo-router"
     ],
     "experiments": {
-      "typedRoutes": true
+      "typedRoutes": true,
+      "tsconfigPaths": true
     },
     "updates": {
       "enabled": false
+    },
+    "extra": {
+      "EXPO_PUBLIC_SUPABASE_URL": "https://fkufmcaimlcsnxcjknju.supabase.co",
+      "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZrdWZtY2FpbWxjc254Y2prbmp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzExMjY4MDEsImV4cCI6MTc2MjY2MjgwMX0.2P7h8zLVNXVFnvjWIYkfqBvJczBdCMJa-6fJHOZqhVo"
     }
   }
 }

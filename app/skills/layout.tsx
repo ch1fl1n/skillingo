@@ -1,39 +1,86 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 import { Slot, useRouter } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePerf } from '@/components/tutorial/PerfProvider';
+
+SplashScreen.preventAutoHideAsync();
 
 /**
- * Layout contenedor para la sección de skills.
- * Encapsula encabezado y podría añadir tabs en el futuro.
- * Protege rutas internas si el usuario no está autenticado.
+ * Skills layout optimizado para performance:
+ * - Lazy loading de pantallas con react-native-screens
+ * - Medición de tiempo de inicialización
+ * - Prefetch configurado en onboarding
+ * - Auth guard con tolerancia (máximo 3s espera)
  */
 export default function SkillsLayout() {
   const { user, loading } = useAuth();
+  const { mark, measure } = usePerf();
   const router = useRouter();
 
-  React.useEffect(() => {
-    if (!loading && !user) {
-      router.replace('/login');
-    }
-  }, [user, loading, router]);
+  useEffect(() => {
+    const handleAuthCheck = async () => {
+      mark('skills-auth-check-start');
+
+      // Timeout de seguridad: máximo 3 segundos
+      const timeoutId = setTimeout(() => {
+        console.warn('[Skills] Auth check timeout');
+        SplashScreen.hideAsync();
+      }, 3000);
+
+      if (!loading) {
+        clearTimeout(timeoutId);
+        measure('skills-auth-check', 'skills-auth-check-start', {
+          authenticated: !!user,
+        });
+
+        if (!user) {
+          router.replace('/login');
+        } else {
+          SplashScreen.hideAsync();
+        }
+      }
+    };
+
+    handleAuthCheck();
+  }, [user, loading, router, mark, measure]);
+
+  // Mostrar fallback mientras se verifica autenticación
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Skills</Text>
-      </View>
-      <Slot />
+      <Slot
+        screenOptions={{
+          // Optimización: lazy load screens con react-native-screens
+          lazy: true,
+          detachInactiveScreens: true,
+          animationEnabled: true,
+        }}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#1e293b',
+  container: { flex: 1, backgroundColor: '#0f1113' },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  title: { color: 'white', fontSize: 20, fontWeight: '600' },
+  loadingText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
 });
