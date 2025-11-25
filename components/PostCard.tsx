@@ -50,7 +50,7 @@ export default function PostCard({ post }: PostCardProps) {
 
   return (
     <TouchableOpacity
-      style={[styles.card, { backgroundColor: colors.surface?.default || '#f5f5f5' }]}
+      style={styles.card}
       activeOpacity={0.7}
       onPress={() => router.push({
         pathname: '/community/[postId]',
@@ -106,9 +106,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.06,
     shadowRadius: 4,
     elevation: 2,
+    borderWidth: 1,
+    backgroundColor: '#d1d5db',
+    borderColor: '#bfc3c7',
   },
   cardHeader: {
     flexDirection: 'row',

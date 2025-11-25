@@ -244,6 +244,23 @@ export function subscribeToWallet(userId: string, handler: () => void) {
 }
 
 /**
+ * Subscribe to post_likes changes for a specific post. Handler is called when any
+ * row for that post is inserted or deleted so callers can refresh counts/UI.
+ * Returns an unsubscribe function.
+ */
+export function subscribeToPostLikes(postId: number, handler: () => void) {
+  const channel = supabase.channel(`post_likes_${postId}`)
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'post_likes',
+      filter: `post_id=eq.${postId}`,
+    }, handler)
+    .subscribe();
+  return () => { supabase.removeChannel(channel); };
+}
+
+/**
  * Award XP to the authenticated user. Returns { data, error } where data is [{ new_total_xp, new_level }]
  */
 export async function awardXp(xp: number) {
