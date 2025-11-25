@@ -6,11 +6,11 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import EditScreenInfo from '@/components/EditScreenInfo';
 
 // rutas a las imágenes subidas (usa exactamente estas rutas)
-const HERO_IMAGE_URI = '/mnt/data/4c96c5e3-309b-4ac6-88cb-67303910a4f4.png';
-const SKILL_GRAPH_URI = '/mnt/data/c82faa0b-ab2e-4e0d-91b8-50200f7d7aa0.png';
+// Removed duplicate declaration of SKILL_GRAPH_URI
 
 // Imports para obtener datos (igual que en index)
 import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'expo-router';
 import { getCurrentUserProfile, getUserStreak } from '@/lib/db';
 
 // Mascot asset (ya lo tenías)
@@ -42,7 +42,7 @@ export default function TabThreeScreen() {
   const router = useRouter();
   const { user } = useAuth();
 
-  const [profile, setProfile] = React.useState<{ username: string | null; level: number | null; total_xp: number | null } | null>(null);
+  const [profile, setProfile] = React.useState<{ username: string | null; level: number | null; total_xp: number | null; avatar_url?: string | null } | null>(null);
   const [streak, setStreak] = React.useState<number>(0);
   const [loadingHeader, setLoadingHeader] = React.useState<boolean>(true);
 
@@ -102,7 +102,11 @@ export default function TabThreeScreen() {
         <View style={styles.header}>
           <View style={styles.profileSection}>
             <View style={styles.avatarContainer}>
-              <Image source={mascotImage} style={styles.avatar} resizeMode="contain" />
+              <Image
+  source={ profile?.avatar_url ? { uri: profile.avatar_url } : mascotImage }
+  style={styles.avatar}
+  resizeMode="contain"
+/>
               <View style={styles.levelBadge}>
                 <Text style={styles.levelText}>{level}</Text>
               </View>
