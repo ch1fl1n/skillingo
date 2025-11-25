@@ -4,8 +4,11 @@ import type {
   Skill, 
   Lesson, 
   LessonWithCompletion, 
-  SkillWithProgress 
+  SkillWithProgress, 
+  Difficulty,
+  LessonContent // <--- AGREGADO: Necesario para el casting
 } from '@/types/lesson.types'
+import { getPublicUrlForPath } from '@/lib/storage';
 
 // Utility: get current authenticated user id
 async function requireAuthUserId(): Promise<string> {
@@ -41,7 +44,7 @@ export async function createCommunityPost(input: {
     .single()
 
   if (error) throw error
-  return data
+  return data;
 }
 
 export async function listCommunityPosts(params?: {
@@ -61,7 +64,7 @@ export async function listCommunityPosts(params?: {
 
   const { data, error } = await q
   if (error) throw error
-  return data
+  return data || [];
 }
 
 export async function moderatePost(postId: number, action: 'approve' | 'reject') {
@@ -175,11 +178,18 @@ export async function getLessonsBySkillId(skillId: number): Promise<LessonWithCo
     attempts?.map(a => [a.lesson_id, { completed: a.completed, score: a.score }]) || []
   )
   
-  return lessons.map(lesson => ({
-    ...lesson,
-    completed: attemptsMap.get(lesson.id)?.completed || false,
-    user_score: attemptsMap.get(lesson.id)?.score || null
-  }))
+  return lessons
+    .filter(lesson => lesson.skill_id !== null)
+    .map(lesson => ({
+      ...lesson,
+      skill_id: lesson.skill_id as number, 
+      difficulty: (lesson.difficulty as Difficulty) || 'easy', 
+      xp_reward: lesson.xp_reward ?? 0,
+      completed: attemptsMap.get(lesson.id)?.completed || false,
+      user_score: attemptsMap.get(lesson.id)?.score || null,
+      // CORRECCION 1: Casteamos el Json genérico al tipo específico LessonContent
+      content: lesson.content as unknown as LessonContent 
+    }))
 }
 
 export async function getLessonById(lessonId: number): Promise<Lesson> {
@@ -190,7 +200,15 @@ export async function getLessonById(lessonId: number): Promise<Lesson> {
     .single()
   
   if (error) throw error
-  return data
+
+  // CORRECCION 2: Reconstruimos el objeto casteando content
+  return {
+    ...data,
+    skill_id: data.skill_id as number,
+    difficulty: (data.difficulty as Difficulty) || 'easy',
+    xp_reward: data.xp_reward ?? 0,
+    content: data.content as unknown as LessonContent
+  };
 }
 
 export async function trackLessonAttempt(input: {
@@ -313,19 +331,39 @@ export async function getUserProgress() {
 }
 
 export async function getCurrentUserProfile() {
-  const userId = await requireAuthUserId()
+  const { data: sessionData } = await supabase.auth.getSession();
+  const userId = (sessionData as any)?.session?.user?.id ?? null;
+  if (!userId) return null;
+
   const { data, error } = await supabase
     .from('users')
-    .select('id, username, email, avatar_url, level, total_xp, role, created_at')
+    .select('id, username, avatar_url, avatar_path, level, total_xp, email')
     .eq('id', userId)
-    .single()
-  
+    .single();
+
   if (error) {
-    console.error('Error fetching user profile:', error)
-    throw new Error(`Failed to fetch profile: ${error.message}`)
+    console.warn('getCurrentUserProfile supabase error', error);
+    return null;
   }
-  
-  return data
+
+  const row: any = data ?? null;
+  if (!row) return null;
+
+  // resolver avatar: prefer avatar_url, sino convertir avatar_path a public url si bucket público
+  let avatar = row.avatar_url ?? null;
+  if (!avatar && row.avatar_path) {
+    avatar = getPublicUrlForPath('Profile_image', row.avatar_path);
+  }
+
+  return {
+    id: row.id,
+    username: row.username,
+    email: row.email,
+    level: row.level,
+    total_xp: row.total_xp,
+    avatar_url: avatar,
+    avatar_path: row.avatar_path,
+  };
 }
 
 /**
@@ -387,11 +425,6 @@ export async function getUserStreak(): Promise<number> {
 }
 
 // 🎓 CATEGORY-BASED UTILITIES
-// 
-// ¡Funciones auxiliares para obtener progreso agrupado por categoría!
-// Estas funciones responden la pregunta: "¿En qué categoría del siglo XXI
-// está progresando el estudiante?"
-//
 export async function getSkillsByCategory(category: string) {
   const { data, error } = await supabase
     .from('skills')
@@ -405,11 +438,8 @@ export async function getSkillsByCategory(category: string) {
 
 /**
  * 💯 Obtener estadísticas de progreso por categoría específica
- * 
- * Retorna: cuántas habilidades hay, cuántas completó, progreso promedio
  */
 export async function getCategoryStats(userId: string, category: string) {
-  // 🔍 Paso 1: Obtener todas las habilidades en la categoría
   const { data: categorySkills, error: skillsError } = await supabase
     .from('skills')
     .select('id')
@@ -430,7 +460,6 @@ export async function getCategoryStats(userId: string, category: string) {
     }
   }
   
-  // 🎯 Paso 2: Obtener progreso del usuario
   const { data: userProgress, error: progressError } = await supabase
     .from('user_progress')
     .select('progress_percent')
@@ -440,9 +469,9 @@ export async function getCategoryStats(userId: string, category: string) {
   if (progressError && !progressError.message.includes('No rows')) throw progressError
   
   const progressList = userProgress?.map(p => p.progress_percent) || []
-  const completedCount = progressList.filter(p => p >= 100).length
+  const completedCount = progressList.filter(p => (p ?? 0) >= 100).length
   const avgProgress = progressList.length > 0
-    ? Math.round(progressList.reduce((a, b) => a + b, 0) / progressList.length)
+    ? Math.round((progressList?.reduce((a, b) => (a ?? 0) + (b ?? 0), 0) || 0) / (progressList?.length || 1))
     : 0
   
   return {
@@ -456,9 +485,6 @@ export async function getCategoryStats(userId: string, category: string) {
 
 /**
  * 🌟 Obtener progreso en TODAS las categorías de una vez
- * 
- * ¡Perfecto para dashboards! Retorna array con estadísticas completas
- * de cada categoría del marco de competencias del siglo XXI
  */
 export async function getAllCategoryStats(userId: string) {
   const categories = ['Skills', 'Character', 'Meta-Learning']
@@ -474,14 +500,10 @@ export async function getAllCategoryStats(userId: string) {
 
 /**
  * 🎯 Sugerir próxima habilidad a aprender basada en categoría débil
- * 
- * Algoritmo inteligente que sugiere dónde el estudiante debe enfocarse
- * para un crecimiento equilibrado en las competencias del siglo XXI
  */
 export async function suggestNextSkillByCategory(userId: string) {
   const allStats = await getAllCategoryStats(userId)
   
-  // 🔍 Encontrar categoría con menor progreso
   const weakestCategory = allStats.reduce((prev, current) =>
     prev.average_progress < current.average_progress ? prev : current
   )
@@ -490,7 +512,6 @@ export async function suggestNextSkillByCategory(userId: string) {
     return { suggestion: 'Todas las categorías dominadas!', category: null }
   }
   
-  // 📚 Obtener una habilidad incompleta de esa categoría
   const { data: incompleteLessons, error } = await supabase
     .from('skills')
     .select('id, name')
@@ -509,9 +530,6 @@ export async function suggestNextSkillByCategory(userId: string) {
 
 /**
  * 📊 Obtener resumen educativo: ¿Cuál es la fortaleza del estudiante?
- * 
- * Responde: "¿En cuál categoría del siglo XXI destaca más este estudiante?"
- * Útil para reconocimiento y motivación
  */
 export async function getStudentStrength(userId: string) {
   const allStats = await getAllCategoryStats(userId)
