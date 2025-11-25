@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 // rutas a las imágenes subidas (usa exactamente estas rutas)
-// Removed duplicate declaration of SKILL_GRAPH_URI
+const SKILL_GRAPH_URI = 'https://example.com/skill-graph.jpg'; // Placeholder URI for the skill graph image
 const HERO_IMAGE_URI = 'https://example.com/hero-image.jpg'; // Placeholder URI for the lesson image
 
 // Imports para obtener datos (igual que en index)
