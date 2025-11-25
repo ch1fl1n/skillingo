@@ -11,13 +11,30 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { listPendingPosts, moderatePost } from '@/lib/db';
+import { getModerationQueue, moderatePostWithQueue, getModerationStats } from '@/lib/db';
 import { useAuth } from '@/contexts/AuthContext';
-import type { Tables } from '@/types/database.types';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
 
-type CommunityPost = Tables<'community_posts'>;
+type ModerationQueueItem = {
+  id: number;
+  status: string | null;
+  reviewed_at: string | null;
+  moderator_id: string | null;
+  community_posts: {
+    id: number;
+    title: string;
+    content: string;
+    category: string | null;
+    created_at: string | null;
+    user_id: string | null;
+    users: {
+      username: string;
+      avatar_url: string | null;
+      level: number;
+    } | null;
+  } | null;
+};
 
 export default function ModerationScreen() {
   const router = useRouter();
@@ -25,11 +42,17 @@ export default function ModerationScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
 
-  const [posts, setPosts] = useState<CommunityPost[]>([]);
+  const [posts, setPosts] = useState<ModerationQueueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [moderating, setModerating] = useState<number | null>(null);
+  const [stats, setStats] = useState<{
+    pending: number;
+    approved: number;
+    rejected: number;
+    total: number;
+  } | null>(null);
 
   // Check if user has moderator/admin role
   const isModerator = profile?.role === 'moderator' || profile?.role === 'admin';
@@ -42,7 +65,17 @@ export default function ModerationScreen() {
       return;
     }
     loadPosts();
+    loadStats();
   }, [isModerator]);
+
+  const loadStats = async () => {
+    try {
+      const statsData = await getModerationStats();
+      setStats(statsData);
+    } catch (err) {
+      console.error('Error loading moderation stats:', err);
+    }
+  };
 
   const loadPosts = async (refresh = false) => {
     try {
@@ -52,7 +85,7 @@ export default function ModerationScreen() {
         setLoading(true);
       }
 
-      const data = await listPendingPosts({ limit: 50 });
+      const data = await getModerationQueue({ limit: 50 });
       setPosts(data);
       setError('');
     } catch (err) {
@@ -64,13 +97,16 @@ export default function ModerationScreen() {
     }
   };
 
-  const handleModerate = async (postId: number, action: 'approve' | 'reject') => {
+  const handleModerate = async (queueId: number, postId: number, action: 'approve' | 'reject') => {
     try {
-      setModerating(postId);
-      await moderatePost(postId, action);
+      setModerating(queueId);
+      await moderatePostWithQueue(postId, action);
       
       // Remove from list
-      setPosts((prev) => prev.filter((p) => p.id !== postId));
+      setPosts((prev) => prev.filter((p) => p.id !== queueId));
+      
+      // Reload stats
+      loadStats();
       
       Alert.alert(
         'Success',
@@ -94,32 +130,35 @@ export default function ModerationScreen() {
     });
   };
 
-  const renderPostCard = ({ item }: { item: CommunityPost }) => {
+  const renderPostCard = ({ item }: { item: ModerationQueueItem }) => {
+    const post = item.community_posts;
+    if (!post) return null;
+
     const isModeratingThis = moderating === item.id;
 
     return (
       <View style={[styles.card, { backgroundColor: colors.surface?.default || '#f5f5f5' }]}>
         <View style={styles.cardHeader}>
           <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={2}>
-            {item.title}
+            {post.title}
           </Text>
-          {item.category && (
+          {post.category && (
             <View style={styles.categoryBadge}>
-              <Text style={styles.categoryText}>{item.category}</Text>
+              <Text style={styles.categoryText}>{post.category}</Text>
             </View>
           )}
         </View>
 
-        <Text style={[styles.cardContent, { color: colors.neutral?.[600] || '#6b7280' }]} numberOfLines={3}>
-          {item.content}
+        <Text style={[styles.cardContent, { color: colors.neutral?.['500'] || '#6b7280' }]} numberOfLines={3}>
+          {post.content}
         </Text>
 
-        <Text style={styles.dateText}>Submitted: {formatDate(item.created_at)}</Text>
+        <Text style={styles.dateText}>Submitted: {formatDate(post.created_at)}</Text>
 
         <View style={styles.actionsRow}>
           <TouchableOpacity
             style={[styles.actionButton, styles.approveButton]}
-            onPress={() => handleModerate(item.id, 'approve')}
+            onPress={() => handleModerate(item.id, post.id, 'approve')}
             disabled={isModeratingThis}
             activeOpacity={0.7}
           >
@@ -135,7 +174,7 @@ export default function ModerationScreen() {
 
           <TouchableOpacity
             style={[styles.actionButton, styles.rejectButton]}
-            onPress={() => handleModerate(item.id, 'reject')}
+            onPress={() => handleModerate(item.id, post.id, 'reject')}
             disabled={isModeratingThis}
             activeOpacity={0.7}
           >
@@ -206,6 +245,18 @@ export default function ModerationScreen() {
           <Text style={[styles.statValue, { color: colors.text }]}>{posts.length}</Text>
           <Text style={styles.statLabel}>Pending</Text>
         </View>
+        {stats && (
+          <>
+            <View style={styles.statItem}>
+              <Text style={[styles.statValue, { color: '#10b981' }]}>{stats.approved}</Text>
+              <Text style={styles.statLabel}>Approved</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={[styles.statValue, { color: '#ef4444' }]}>{stats.rejected}</Text>
+              <Text style={styles.statLabel}>Rejected</Text>
+            </View>
+          </>
+        )}
       </View>
 
       <FlatList

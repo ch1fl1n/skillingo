@@ -838,3 +838,250 @@ export async function isCommentLikedByMe(commentId: number) {
     return false
   }
 }
+
+// -----------------------------
+// Moderation Queue System
+// -----------------------------
+
+/**
+ * Add a post to the moderation queue when it's created
+ * This creates an audit trail for moderation actions
+ */
+export async function addPostToModerationQueue(postId: number) {
+  const { data, error } = await supabase
+    .from('moderation_queue')
+    .insert({
+      post_id: postId,
+      status: 'pending',
+    })
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+/**
+ * Get posts pending moderation with full details
+ * Includes post content, author info, and moderation queue status
+ */
+export async function getModerationQueue(params?: {
+  limit?: number
+  offset?: number
+  status?: 'pending' | 'approved' | 'rejected'
+}) {
+  const { limit = 50, offset = 0, status = 'pending' } = params || {}
+
+  // First get moderation queue entries
+  const { data: queueData, error: queueError } = await supabase
+    .from('moderation_queue')
+    .select('id, status, reviewed_at, moderator_id, post_id')
+    .eq('status', status)
+    .order('id', { ascending: false })
+    .range(offset, offset + limit - 1)
+
+  if (queueError) throw queueError
+
+  if (!queueData || queueData.length === 0) return []
+
+  // Get post IDs
+  const postIds = queueData.map(item => item.post_id).filter(Boolean) as number[]
+
+  // Fetch posts with author info separately
+  const { data: postsData, error: postsError } = await supabase
+    .from('community_posts')
+    .select('id, title, content, category, created_at, user_id')
+    .in('id', postIds)
+
+  if (postsError) throw postsError
+
+  // Get unique user IDs
+  const userIds = [...new Set((postsData || []).map(p => p.user_id).filter(Boolean))] as string[]
+
+  // Fetch user info
+  const { data: usersData, error: usersError } = await supabase
+    .from('users')
+    .select('id, username, avatar_url, level')
+    .in('id', userIds)
+
+  if (usersError) throw usersError
+
+  // Create user map
+  const userMap = new Map(
+    (usersData || []).map(user => [user.id, user])
+  )
+
+  // Combine data
+  return queueData.map(queueItem => ({
+    ...queueItem,
+    community_posts: postsData?.find(p => p.id === queueItem.post_id) ? {
+      ...postsData.find(p => p.id === queueItem.post_id)!,
+      users: queueItem.post_id && userMap.get(postsData.find(p => p.id === queueItem.post_id)?.user_id || '') || null,
+    } : null,
+  }))
+}
+
+/**
+ * Moderate a post using the moderation queue system
+ * This provides better audit trails than direct status updates
+ */
+export async function moderatePostWithQueue(postId: number, action: 'approve' | 'reject') {
+  const moderatorId = await requireAuthUserId()
+
+  // First, update the moderation queue
+  const { data: queueEntry, error: queueError } = await supabase
+    .from('moderation_queue')
+    .update({
+      status: action,
+      moderator_id: moderatorId,
+      reviewed_at: new Date().toISOString(),
+    })
+    .eq('post_id', postId)
+    .eq('status', 'pending')
+    .select()
+    .single()
+
+  if (queueError) throw queueError
+
+  // Then, update the post status
+  const postUpdates: Partial<Tables<'community_posts'>> =
+    action === 'approve'
+      ? { status: 'approved', approved_at: new Date().toISOString() }
+      : { status: 'rejected', approved_at: null }
+
+  const { data: postData, error: postError } = await supabase
+    .from('community_posts')
+    .update(postUpdates)
+    .eq('id', postId)
+    .select()
+    .single()
+
+  if (postError) throw postError
+
+  return {
+    queueEntry,
+    post: postData,
+  }
+}
+
+/**
+ * Get moderation statistics for dashboard/analytics
+ */
+export async function getModerationStats() {
+  const moderatorId = await requireAuthUserId()
+
+  // Get counts by status
+  const { data: statusCounts, error: statusError } = await supabase
+    .from('moderation_queue')
+    .select('status')
+    .eq('moderator_id', moderatorId)
+
+  if (statusError) throw statusError
+
+  const stats = {
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+    total: statusCounts?.length || 0,
+  }
+
+  statusCounts?.forEach(item => {
+    if (item.status === 'approved') stats.approved++
+    else if (item.status === 'rejected') stats.rejected++
+    else if (item.status === 'pending') stats.pending++
+  })
+
+  // Get recent moderation activity
+  const { data: recentActivity, error: activityError } = await supabase
+    .from('moderation_queue')
+    .select(`
+      id,
+      status,
+      reviewed_at,
+      community_posts (
+        id,
+        title,
+        category
+      )
+    `)
+    .eq('moderator_id', moderatorId)
+    .not('reviewed_at', 'is', null)
+    .order('reviewed_at', { ascending: false })
+    .limit(10)
+
+  if (activityError) throw activityError
+
+  return {
+    ...stats,
+    recentActivity: recentActivity || [],
+  }
+}
+
+/**
+ * Bulk moderate multiple posts (for efficiency)
+ */
+export async function bulkModeratePosts(actions: Array<{
+  postId: number
+  action: 'approve' | 'reject'
+}>) {
+  const moderatorId = await requireAuthUserId()
+  const now = new Date().toISOString()
+
+  // Update moderation queue in bulk
+  const queueUpdates = actions.map(({ postId, action }) => ({
+    post_id: postId,
+    status: action,
+    moderator_id: moderatorId,
+    reviewed_at: now,
+  }))
+
+  const { error: queueError } = await supabase
+    .from('moderation_queue')
+    .upsert(queueUpdates, {
+      onConflict: 'post_id',
+      ignoreDuplicates: false
+    })
+
+  if (queueError) throw queueError
+
+  // Update posts in bulk
+  const approvedIds = actions
+    .filter(a => a.action === 'approve')
+    .map(a => a.postId)
+
+  const rejectedIds = actions
+    .filter(a => a.action === 'reject')
+    .map(a => a.postId)
+
+  // Update approved posts
+  if (approvedIds.length > 0) {
+    const { error: approveError } = await supabase
+      .from('community_posts')
+      .update({
+        status: 'approved',
+        approved_at: now,
+      })
+      .in('id', approvedIds)
+
+    if (approveError) throw approveError
+  }
+
+  // Update rejected posts
+  if (rejectedIds.length > 0) {
+    const { error: rejectError } = await supabase
+      .from('community_posts')
+      .update({
+        status: 'rejected',
+        approved_at: null,
+      })
+      .in('id', rejectedIds)
+
+    if (rejectError) throw rejectError
+  }
+
+  return {
+    processed: actions.length,
+    approved: approvedIds.length,
+    rejected: rejectedIds.length,
+  }
+}

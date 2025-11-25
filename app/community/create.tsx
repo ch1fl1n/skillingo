@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,8 +15,36 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { createCommunityPost } from '@/lib/db';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
+import { useDebounce } from '@/hooks/useCommunity';
 
 const CATEGORIES = ['Tips', 'Achievement', 'Insight', 'Question', 'Discussion'];
+
+// Validation rules with helpful error messages
+const VALIDATION_RULES = {
+  title: {
+    minLength: 5,
+    maxLength: 100,
+    messages: {
+      empty: 'Please enter a title',
+      tooShort: 'Title must be at least 5 characters',
+      tooLong: 'Title must be at most 100 characters',
+    },
+  },
+  content: {
+    minLength: 10,
+    maxLength: 2000,
+    messages: {
+      empty: 'Please enter content',
+      tooShort: 'Content must be at least 10 characters',
+      tooLong: 'Content must be at most 2000 characters',
+    },
+  },
+};
+
+interface ValidationError {
+  field: 'title' | 'content' | 'general';
+  message: string;
+}
 
 export default function CreatePostScreen() {
   const router = useRouter();
@@ -27,33 +55,104 @@ export default function CreatePostScreen() {
   const [content, setContent] = useState('');
   const [category, setCategory] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
+  const [errors, setErrors] = useState<ValidationError[]>([]);
 
-  const handleSubmit = async () => {
-    // Validation
-    if (!title.trim()) {
-      setError('Please enter a title');
-      return;
-    }
-    if (title.trim().length < 5) {
-      setError('Title must be at least 5 characters');
-      return;
-    }
-    if (!content.trim()) {
-      setError('Please enter content');
-      return;
-    }
-    if (content.trim().length < 10) {
-      setError('Content must be at least 10 characters');
+  // OPTIMIZATION: Debounce validation to avoid excessive re-renders
+  const debouncedTitle = useDebounce(title, 300);
+  const debouncedContent = useDebounce(content, 300);
+
+  // OPTIMIZATION: Memoized validation function
+  const validateForm = useCallback(
+    (t: string, c: string): ValidationError[] => {
+      const validationErrors: ValidationError[] = [];
+
+      // Validate title
+      if (!t.trim()) {
+        validationErrors.push({
+          field: 'title',
+          message: VALIDATION_RULES.title.messages.empty,
+        });
+      } else if (t.trim().length < VALIDATION_RULES.title.minLength) {
+        validationErrors.push({
+          field: 'title',
+          message: VALIDATION_RULES.title.messages.tooShort,
+        });
+      } else if (t.length > VALIDATION_RULES.title.maxLength) {
+        validationErrors.push({
+          field: 'title',
+          message: VALIDATION_RULES.title.messages.tooLong,
+        });
+      }
+
+      // Validate content
+      if (!c.trim()) {
+        validationErrors.push({
+          field: 'content',
+          message: VALIDATION_RULES.content.messages.empty,
+        });
+      } else if (c.trim().length < VALIDATION_RULES.content.minLength) {
+        validationErrors.push({
+          field: 'content',
+          message: VALIDATION_RULES.content.messages.tooShort,
+        });
+      } else if (c.length > VALIDATION_RULES.content.maxLength) {
+        validationErrors.push({
+          field: 'content',
+          message: VALIDATION_RULES.content.messages.tooLong,
+        });
+      }
+
+      return validationErrors;
+    },
+    []
+  );
+
+  // OPTIMIZATION: Validate on debounced changes (not on every keystroke)
+  useEffect(() => {
+    const validationErrors = validateForm(debouncedTitle, debouncedContent);
+    setErrors(validationErrors);
+  }, [debouncedTitle, debouncedContent, validateForm]);
+
+  // OPTIMIZATION: Memoized isFormValid to prevent unnecessary re-renders
+  const isFormValid = useMemo(
+    () => title.trim().length >= VALIDATION_RULES.title.minLength &&
+           content.trim().length >= VALIDATION_RULES.content.minLength &&
+           errors.length === 0,
+    [title, content, errors]
+  );
+
+  // OPTIMIZATION: Memoized character counts
+  const titleCount = useMemo(() => title.length, [title]);
+  const contentCount = useMemo(() => content.length, [content]);
+
+  // OPTIMIZATION: Calculate remaining characters
+  const titleRemaining = useMemo(
+    () => VALIDATION_RULES.title.maxLength - titleCount,
+    [titleCount]
+  );
+  const contentRemaining = useMemo(
+    () => VALIDATION_RULES.content.maxLength - contentCount,
+    [contentCount]
+  );
+
+  const handleSubmit = useCallback(async () => {
+    // Final validation before submit
+    const validationErrors = validateForm(title, content);
+    if (validationErrors.length > 0) {
+      setErrors(validationErrors);
       return;
     }
 
     try {
       setSubmitting(true);
-      setError('');
+      setErrors([]);
 
-      console.log('Creating post with:', { title: title.trim(), content: content.trim(), category });
-      
+      console.log('Creating post with:', {
+        title: title.trim(),
+        content: content.trim(),
+        category,
+      });
+
       const result = await createCommunityPost({
         title: title.trim(),
         content: content.trim(),
@@ -64,11 +163,11 @@ export default function CreatePostScreen() {
 
       // Reset submitting state before navigation
       setSubmitting(false);
-      
-      // Navigate back immediately and show success message
+
+      // Navigate back immediately
       router.back();
-      
-      // Show success toast/alert after navigation
+
+      // Show success message after navigation
       setTimeout(() => {
         Alert.alert(
           'Post Published!',
@@ -77,15 +176,33 @@ export default function CreatePostScreen() {
       }, 100);
     } catch (err) {
       console.error('Error creating post:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create post';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to create post';
       console.error('Error details:', errorMessage);
-      setError(errorMessage);
+
+      setErrors([
+        {
+          field: 'general',
+          message: errorMessage,
+        },
+      ]);
       setSubmitting(false);
-      
+
       // Show alert for user
       Alert.alert('Error', errorMessage);
     }
-  };
+  }, [title, content, category, validateForm, router]);
+
+  // Get error message for field
+  const getFieldError = useCallback(
+    (field: 'title' | 'content'): string | null => {
+      const error = errors.find((e) => e.field === field);
+      return error?.message || null;
+    },
+    [errors]
+  );
+
+  const generalError = errors.find((e) => e.field === 'general');
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -97,11 +214,18 @@ export default function CreatePostScreen() {
         <View style={styles.placeholder} />
       </View>
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {error ? (
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {generalError ? (
           <View style={styles.errorBanner}>
-            <MaterialCommunityIcons name="alert-circle" size={20} color="#ef4444" />
-            <Text style={styles.errorText}>{error}</Text>
+            <MaterialCommunityIcons
+              name="alert-circle"
+              size={20}
+              color="#ef4444"
+            />
+            <Text style={styles.errorText}>{generalError.message}</Text>
           </View>
         ) : null}
 
@@ -117,13 +241,27 @@ export default function CreatePostScreen() {
               },
             ]}
             placeholder="Give your post a catchy title"
-            placeholderTextColor={colors.neutral?.['400'] || '#9ca3af'}
+            placeholderTextColor="#9ca3af"
             value={title}
             onChangeText={setTitle}
             maxLength={100}
             editable={!submitting}
           />
-          <Text style={styles.helperText}>{title.length}/100 characters</Text>
+          <Text style={styles.helperText}>
+            {titleCount}/{VALIDATION_RULES.title.maxLength} characters
+            {titleRemaining < 20 && titleRemaining > 0 && (
+              <Text style={styles.warningText}>
+                {' '}
+                ({titleRemaining} remaining)
+              </Text>
+            )}
+            {titleRemaining <= 0 && (
+              <Text style={styles.errorWarningText}> (max reached)</Text>
+            )}
+          </Text>
+          {getFieldError('title') && (
+            <Text style={styles.errorMessage}>{getFieldError('title')}</Text>
+          )}
         </View>
 
         <View style={styles.section}>
@@ -165,7 +303,7 @@ export default function CreatePostScreen() {
               },
             ]}
             placeholder="Share your thoughts, tips, or insights with the community..."
-            placeholderTextColor={colors.neutral?.['400'] || '#9ca3af'}
+            placeholderTextColor="#9ca3af"
             value={content}
             onChangeText={setContent}
             maxLength={2000}
@@ -174,7 +312,21 @@ export default function CreatePostScreen() {
             textAlignVertical="top"
             editable={!submitting}
           />
-          <Text style={styles.helperText}>{content.length}/2000 characters</Text>
+          <Text style={styles.helperText}>
+            {contentCount}/{VALIDATION_RULES.content.maxLength} characters
+            {contentRemaining < 50 && contentRemaining > 0 && (
+              <Text style={styles.warningText}>
+                {' '}
+                ({contentRemaining} remaining)
+              </Text>
+            )}
+            {contentRemaining <= 0 && (
+              <Text style={styles.errorWarningText}> (max reached)</Text>
+            )}
+          </Text>
+          {getFieldError('content') && (
+            <Text style={styles.errorMessage}>{getFieldError('content')}</Text>
+          )}
         </View>
 
         <View style={styles.infoBox}>
@@ -189,10 +341,10 @@ export default function CreatePostScreen() {
         <TouchableOpacity
           style={[
             styles.submitButton,
-            (submitting || !title.trim() || !content.trim()) && styles.submitButtonDisabled,
+            (!isFormValid || submitting) && styles.submitButtonDisabled,
           ]}
           onPress={handleSubmit}
-          disabled={submitting || !title.trim() || !content.trim()}
+          disabled={!isFormValid || submitting}
           activeOpacity={0.8}
         >
           {submitting ? (
@@ -280,6 +432,20 @@ const styles = StyleSheet.create({
     color: '#9ca3af',
     marginTop: 4,
     textAlign: 'right',
+  },
+  warningText: {
+    color: '#f59e0b',
+    fontWeight: '600',
+  },
+  errorWarningText: {
+    color: '#ef4444',
+    fontWeight: '600',
+  },
+  errorMessage: {
+    fontSize: 12,
+    color: '#ef4444',
+    marginTop: 4,
+    fontWeight: '600',
   },
   categoriesRow: {
     flexDirection: 'row',
