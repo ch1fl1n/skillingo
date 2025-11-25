@@ -20,8 +20,10 @@ import {
   useCreateComment,
   useCommunityCleanup,
 } from '@/hooks/useCommunity';
+import { deleteCommunityPost, deleteComment } from '@/lib/db';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function PostDetailScreen() {
   const router = useRouter();
@@ -36,6 +38,7 @@ export default function PostDetailScreen() {
 
   // OPTIMIZATION: Use custom hooks for data fetching with built-in caching
   const { data: postDetailData, loading, error } = usePostDetail(postId);
+  const post = postDetailData?.post ?? null;
   const { isLiked, likeCount, handleLike } = useLikePost(
     postId,
     postDetailData?.userMetadata.isLiked ?? false
@@ -50,11 +53,6 @@ export default function PostDetailScreen() {
   const [commentText, setCommentText] = useState('');
   const [commentsExpanded, setCommentsExpanded] = useState(false);
   const [ratingLoading, setRatingLoading] = useState(false);
-
-  const [comments, setComments] = useState<any[]>([]);
-  const [commentText, setCommentText] = useState('');
-  const [commentLoading, setCommentLoading] = useState(false);
-  const [commentsExpanded, setCommentsExpanded] = useState(false);
 
   // Memoized handler for rating with loading state
   const handleRateWithLoading = useCallback(
@@ -72,17 +70,17 @@ export default function PostDetailScreen() {
   const handleCommentSubmit = async () => {
     if (!commentText.trim()) return;
     try {
-      setCommentLoading(true);
+      // createComment hook manages loading state internally; we still show local input lock
       const newComment = await createComment({ postId, content: commentText.trim() });
       if (newComment) {
-        setComments((prev) => [newComment, ...prev]);
+        addCommentToList(newComment);
         setCommentText('');
       }
     } catch (err) {
       console.error('Error creating comment:', err);
       Alert.alert('Error', err instanceof Error ? err.message : 'Failed to post comment');
     } finally {
-      setCommentLoading(false);
+      // no-op: createComment handles loading; keep UI responsive
     }
   };
 
@@ -109,7 +107,8 @@ export default function PostDetailScreen() {
   const handleDeleteComment = async (commentId: number) => {
     try {
       await deleteComment(commentId);
-      setComments((prev) => prev.filter((c) => c.id !== commentId));
+      // refresh the screen to update comments list (hook will refetch on mount)
+      router.replace(`/community/${postId}`);
       Alert.alert('Success', 'Comment deleted');
     } catch (err) {
       console.error('Error deleting comment:', err);
@@ -208,7 +207,7 @@ export default function PostDetailScreen() {
         <View style={styles.actionsRow}>
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={handleLikeToggle}
+            onPress={handleLike}
             activeOpacity={0.7}
           >
             <MaterialCommunityIcons
@@ -217,7 +216,7 @@ export default function PostDetailScreen() {
               color={isLiked ? '#ef4444' : '#9ca3af'}
             />
             <Text style={[styles.actionText, isLiked && styles.actionTextActive]}>
-              {likesCount} {likesCount === 1 ? 'Like' : 'Likes'}
+              {likeCount} {likeCount === 1 ? 'Like' : 'Likes'}
             </Text>
           </TouchableOpacity>
 

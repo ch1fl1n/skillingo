@@ -21,6 +21,8 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        tabBarLabelStyle: { fontSize: 13, fontWeight: '600' },
+        tabBarStyle: { height: 64, paddingBottom: 8 },
         headerShown: useClientOnlyValue(false, true),
       }}
     >
@@ -28,8 +30,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Tab One',
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
+          title: 'Home',
+          tabBarIcon: ({ color }) => <TabBarIcon name="home" color={color} />,
           headerRight: () => (
             <Link href="/modal" asChild>
               <Pressable>
@@ -61,8 +63,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="three"
         options={{
-          title: 'Tab Three',
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
+          title: 'Profile',
+          tabBarIcon: ({ color }) => <TabBarIcon name="user" color={color} />,
         }}
       />
 
@@ -70,8 +72,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="four"
         options={{
-          title: 'Tab Four',
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
+          title: 'Settings',
+          tabBarIcon: ({ color }) => <TabBarIcon name="cog" color={color} />,
         }}
       />
     </Tabs>

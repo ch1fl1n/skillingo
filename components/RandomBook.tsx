@@ -27,6 +27,7 @@ const BUBBLE_SIZE = 64;
 export default function RandomBook(): JSX.Element {
   const [book, setBook] = useState<Book | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState(true);
   const [pos, setPos] = useState({ x: SCREEN_W - BUBBLE_SIZE - 16, y: SCREEN_H - BUBBLE_SIZE - 120 });
 
@@ -53,9 +54,9 @@ export default function RandomBook(): JSX.Element {
         if (bookRaw) {
           setBook(JSON.parse(bookRaw));
         }
-              } catch (e) {
-                console.log('RandomBook load error', e);
-              }
+      } catch (e) {
+        console.log('RandomBook load error', e);
+      }
     })();
   }, []);
 
@@ -95,31 +96,61 @@ export default function RandomBook(): JSX.Element {
   ).current;
 
   async function getRandomBook() {
+    setError(null);
+    setLoading(true);
     try {
-      setLoading(true);
+      // Try a set of curated seed queries and small limits to avoid server-side rejections.
+      const seeds = ['novel', 'fiction', 'story', 'history', 'science', 'fantasy', 'children', 'biography', 'poetry'];
+      const limits = [50, 20, 10];
 
-      const res = await fetch('https://openlibrary.org/search.json?q=the&limit=200');
-      const data = await res.json();
+      for (const seed of seeds) {
+        for (const lim of limits) {
+          try {
+            const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(seed)}&limit=${lim}`;
+            const res = await fetch(url, {
+              headers: {
+                Accept: 'application/json',
+                'User-Agent': 'skillingo-app/1.0 (+https://skillingo.local)'
+              }
+            });
 
-      if (!data?.docs?.length) {
-        setBook(null);
-        return;
+            if (res.status === 422) {
+              const body = await res.text().catch(() => '[no-body]');
+              console.warn(`OpenLibrary returned 422 for seed=${seed} limit=${lim}, body:`, body);
+              continue; // try smaller limit or next seed
+            }
+
+            if (!res.ok) {
+              const body = await res.text().catch(() => '[no-body]');
+              console.warn(`OpenLibrary non-OK response for seed=${seed} limit=${lim}: ${res.status} ${res.statusText}`, body);
+              continue;
+            }
+
+            const data = await res.json();
+            if (data?.docs?.length) {
+              const randomIndex = Math.floor(Math.random() * data.docs.length);
+              const randomBook = data.docs[randomIndex];
+              const formatted: Book = {
+                title: randomBook.title,
+                author: randomBook.author_name?.[0],
+                cover: randomBook.cover_i ? `https://covers.openlibrary.org/b/id/${randomBook.cover_i}-L.jpg` : null,
+              };
+              setBook(formatted);
+              return;
+            }
+          } catch (innerErr) {
+            console.warn(`RandomBook fetch attempt failed for seed=${seed} limit=${lim}:`, innerErr);
+            // try next limit/seed
+          }
+        }
       }
 
-      const randomIndex = Math.floor(Math.random() * data.docs.length);
-      const randomBook = data.docs[randomIndex];
-
-      const formatted: Book = {
-        title: randomBook.title,
-        author: randomBook.author_name?.[0],
-        cover: randomBook.cover_i
-          ? `https://covers.openlibrary.org/b/id/${randomBook.cover_i}-L.jpg`
-          : null,
-      };
-
-      setBook(formatted);
+      // nothing worked
+      setBook(null);
+      setError('Could not load books from the Open Library API. Try again later.');
     } catch (e) {
-      console.log('RandomBook error:', e);
+      console.error('RandomBook error:', e);
+      setError('Network error while fetching a random book.');
     } finally {
       setLoading(false);
     }
@@ -155,6 +186,8 @@ export default function RandomBook(): JSX.Element {
                 </TouchableOpacity>
 
                 {loading && <ActivityIndicator style={{ marginTop: 8 }} />}
+
+                {error && <Text style={styles.errorText}>{error}</Text>}
 
                 {book && !loading && (
                   <View style={styles.bookRow}>
@@ -231,6 +264,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   refreshText: { fontWeight: '600' },
+  errorText: { color: '#dc2626', marginTop: 8 },
   bookRow: { flexDirection: 'row', marginTop: 8, alignItems: 'center' },
   cover: { width: 64, height: 96, borderRadius: 4, backgroundColor: '#f1f5f9' },
   coverPlaceholder: { alignItems: 'center', justifyContent: 'center' },
