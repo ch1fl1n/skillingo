@@ -34,7 +34,7 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      ["@react-native-voice/voice"],
+      ["./plugins/react-native-voice.plugin.js"],
       "expo-router"
     ],
     "experiments": {

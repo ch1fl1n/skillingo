@@ -14,7 +14,7 @@
     "@expo/vector-icons": "^15.0.3",
     "@google/genai": "^1.30.0",
     "@react-native-async-storage/async-storage": "^2.2.0",
-    "@react-native-voice/voice": "^3.2.4",
+    "@react-native-voice/voice": "^3.1.5",
     "@react-navigation/native": "^7.1.8",
     "@react-navigation/stack": "^7.6.7",
     "@supabase/supabase-js": "^2.81.1",
@@ -47,6 +47,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@react-native-community/cli": "^16.0.3",
     "@types/react": "~19.1.0",
     "@types/react-native": "^0.72.8",
     "@typescript-eslint/eslint-plugin": "^8.46.4",
@@ -63,7 +64,6 @@
     "react-test-renderer": "19.1.0",
     "supabase": "^2.58.5",
     "typescript": "~5.9.2",
-    "@react-native-community/cli": "latest",
     "typescript-eslint": "^8.46.4"
   },
   "private": true
