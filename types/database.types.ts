@@ -148,6 +148,56 @@ export type Database = {
           },
         ]
       }
+      lesson_evaluations: {
+        Row: {
+          created_at: string
+          evaluated_at: string
+          feedback_data: Json
+          id: string
+          lesson_id: number
+          next_steps: string[] | null
+          objectives_data: Json
+          overall_mastery: string
+          overall_score: number
+          resources_suggested: string[] | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          evaluated_at?: string
+          feedback_data: Json
+          id?: string
+          lesson_id: number
+          next_steps?: string[] | null
+          objectives_data: Json
+          overall_mastery: string
+          overall_score: number
+          resources_suggested?: string[] | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          evaluated_at?: string
+          feedback_data?: Json
+          id?: string
+          lesson_id?: number
+          next_steps?: string[] | null
+          objectives_data?: Json
+          overall_mastery?: string
+          overall_score?: number
+          resources_suggested?: string[] | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_evaluations_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lessons: {
         Row: {
           content: Json | null
@@ -561,6 +611,57 @@ export type Database = {
         }
         Relationships: []
       }
+      wallet_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          id: number
+          idempotency_key: string | null
+          metadata: Json | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: number
+          idempotency_key?: string | null
+          metadata?: Json | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: number
+          idempotency_key?: string | null
+          metadata?: Json | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      wallets: {
+        Row: {
+          balance: number
+          created_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       comments_with_details: {
@@ -605,7 +706,24 @@ export type Database = {
       }
     }
     Functions: {
-      [_ in never]: never
+      create_wallet_transaction: {
+        Args: {
+          p_amount: number
+          p_idempotency_key?: string
+          p_metadata?: Json
+          p_type: string
+        }
+        Returns: {
+          amount: number
+          created_at: string
+          idempotency_key: string
+          metadata: Json
+          new_balance: number
+          tx_id: number
+          type: string
+          user_id: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

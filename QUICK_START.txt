@@ -1,0 +1,214 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║          SISTEMA MOCK EXPANDIDO - GUÍA RÁPIDA DE INICIO                    ║
+║                   50 Lecciones Sin Gemini API                              ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+1️⃣  INICIAR LA APP
+   ───────────────────────────────────────────────────────────────────────────
+   $ npm run web        # Web
+   $ npm run android    # Android
+   $ npm run ios        # iOS
+
+
+2️⃣  NAVEGAR A UNA LECCIÓN
+   ───────────────────────────────────────────────────────────────────────────
+   ✓ Abre la app
+   ✓ Navega a "Skills" o cualquier habilidad
+   ✓ Selecciona una lección (ej: Creativity Lesson 1)
+
+
+3️⃣  RESOLVER EL DESAFÍO
+   ───────────────────────────────────────────────────────────────────────────
+   ✓ Lee la pregunta de la lección
+   ✓ Escribe tu respuesta en el input de texto
+   ✓ Presiona "Submit"
+
+
+4️⃣  VER EVALUACIÓN
+   ───────────────────────────────────────────────────────────────────────────
+   [Esperando 2-3 segundos...]
+   
+   ✓ Aparecerá: "Evaluación Mock Cargada"
+   ✓ Verás:
+     - Dominio: ✅ Logrado / 📚 No Logrado
+     - Puntuación: 87/100
+     - Retroalimentación completa
+     - Próximos pasos
+     - Recomendaciones
+
+
+5️⃣  VERIFICAR EN CONSOLA
+   ───────────────────────────────────────────────────────────────────────────
+   Abre Developer Console:
+   - Chrome: F12 → Console
+   - Firefox: F12 → Console
+   - React Native: Shaking device (Android) or ⌘D (iOS)
+   
+   Deberías ver:
+   
+   [EVALUACIÓN MOCK] Usando evaluación local para lección 1
+   [EVALUACIÓN MOCK] Dificultad: easy
+   [EVALUACIÓN MOCK] ✓ Evaluación mock cargada exitosamente (v2 expandida)
+   [EVALUACIÓN MOCK] Mastery: achieved, Score: 87
+
+
+6️⃣  TESTEAR DIFERENTES LECCIONES
+   ───────────────────────────────────────────────────────────────────────────
+   Easy (Lecciones 1-2, 6-7, 11-12, etc):
+   → Score: 80-100 (siempre alto)
+   → Mastery: "achieved" (motivador)
+   
+   Medium (Lecciones 3-4, 8-9, 13-14, etc):
+   → Score: 40-100 (variable)
+   → Mastery: 70% logrado, 30% no logrado
+   
+   Hard (Lecciones 5, 10, 15, 20, etc):
+   → Score: 35-100 (genuino desafío)
+   → Mastery: 50% logrado, 50% no logrado
+
+
+7️⃣  VERIFICAR SISTEMA
+   ───────────────────────────────────────────────────────────────────────────
+   $ bash test-mock-system.sh
+   
+   Deberías ver:
+   ✅ 50 lecciones
+   ✅ 10 skills
+   ✅ 4 funciones de evaluación
+   ✅ Integración correcta
+
+
+TIPS Y TRUCOS
+═════════════════════════════════════════════════════════════════════════════
+
+💡 SIN API KEY DE GEMINI:
+   → Siempre usa mock (perfecto para testing)
+   → No necesitas configurar nada
+   → Funciona offline
+
+💡 CON API KEY DE GEMINI:
+   → Intenta Gemini primero
+   → Si falla (429), cae a mock automáticamente
+   → Log: "[EVALUACIÓN MOCK]" = usando fallback
+
+💡 REPRODUCIBILIDAD:
+   → Misma lección → Feedback coherente
+   → Pero scores varían por dificultad
+   → Perfecto para testing
+
+💡 EXTENDER:
+   → Más lecciones: edita lib/mock-database.ts
+   → Más skills: crea nuevas evaluaciones
+   → Custom feedback: modifica mock-evaluations-expanded.ts
+
+
+ESTRUCTURA DE 50 LECCIONES
+═════════════════════════════════════════════════════════════════════════════
+
+📚 Lecciones 1-5:    Creativity
+�� Lecciones 6-10:   Critical Thinking
+📚 Lecciones 11-15:  Communication
+📚 Lecciones 16-20:  Collaboration
+📚 Lecciones 21-25:  Curiosity
+📚 Lecciones 26-30:  Courage
+📚 Lecciones 31-35:  Resilience
+📚 Lecciones 36-40:  Ethics
+📚 Lecciones 41-45:  Metacognition
+📚 Lecciones 46-50:  Imagination
+
+
+FLUJO TÉCNICO
+═════════════════════════════════════════════════════════════════════════════
+
+Usuario Submit
+    ↓
+evaluateWithMastery()
+    ↓
+¿Gemini disponible?
+    ├─→ SÍ → Gemini API → Evaluación real
+    └─→ NO → Mock v2 → getMockEvaluationExpanded()
+                ↓
+            Soporta lecciones 1-50+
+                ↓
+        Genera puntuación por dificultad
+                ↓
+        Retorna MasteryEvaluation
+                ↓
+        Pantalla muestra resultados
+
+
+ARCHIVOS CLAVE
+═════════════════════════════════════════════════════════════════════════════
+
+lib/mock-database.ts
+  → 50 lecciones hardcodeadas
+
+lib/mock-evaluations-expanded.ts
+  → Sistema de evaluaciones inteligente
+
+lib/mastery-evaluator.ts
+  → Evaluador con fallback automático
+
+app/skills/*.tsx
+  → Screens de habilidades con Submit
+
+
+DOCUMENTACIÓN COMPLETA
+═════════════════════════════════════════════════════════════════════════════
+
+README_MOCK_SYSTEM.md              ← Resumen rápido
+MOCK_SYSTEM_GUIDE.md               ← Guía detallada
+IMPLEMENTATION_COMPLETE.md         ← Resumen técnico
+EVALUATION_FLOW.md                 ← Flujo de evaluación
+EVALUATION_EXAMPLES.md             ← Ejemplos específicos
+
+
+COMANDOS ÚTILES
+═════════════════════════════════════════════════════════════════════════════
+
+# Verificar setup
+bash test-mock-system.sh
+
+# Contar lecciones
+grep -c "id:" lib/mock-database.ts
+
+# Ver skills
+grep "skill_id:" lib/mock-database.ts | sort -u
+
+# Ver funciones mock
+grep "export function" lib/mock-evaluations-expanded.ts
+
+
+¿PREGUNTAS?
+═════════════════════════════════════════════════════════════════════════════
+
+P: ¿Necesito Gemini API key?
+R: NO. El sistema funciona sin ella. Con key, intenta Gemini primero.
+
+P: ¿Las evaluaciones son siempre iguales?
+R: NO. Varían por dificultad. Mismo ID → feedback coherente pero scores varían.
+
+P: ¿Dónde se guardan los resultados?
+R: EN MEMORIA. Para persistir, necesitas Supabase (próximo paso).
+
+P: ¿Puedo testear todas las 50 lecciones?
+R: SÍ. Todas las 50 están en mock-database.ts. Navega y prueba.
+
+P: ¿Qué hago si Gemini tiene cuota agotada?
+R: NADA. El sistema automáticamente usa mock. Sin intervención necesaria.
+
+
+PRÓXIMOS PASOS
+═════════════════════════════════════════════════════════════════════════════
+
+Ahora:           Sistema mock ✅ en 100% de lecciones
+Después:         Integración con Supabase para persistencia
+Luego:           Gamificación (XP, badges)
+Finalmente:      Análisis de progresión temporal
+
+
+═════════════════════════════════════════════════════════════════════════════
+                    ¡LISTO PARA COMENZAR! 🚀
+═════════════════════════════════════════════════════════════════════════════
+
+npm run web (o android/ios) → Navega → Escribe → Submit → ¡Evaluación! ✨

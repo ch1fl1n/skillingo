@@ -38,10 +38,24 @@ BEGIN
   -- Calcular XP del intento
   v_xp := fn_xp_for_score(NEW.score, (SELECT difficulty FROM lessons WHERE id = NEW.lesson_id));
 
-  -- Actualizar progreso (set 100% si completado)
-  INSERT INTO user_progress(user_id, skill_id, progress_percent, last_updated)
-  VALUES (NEW.user_id, v_skill, 100, now())
-  ON CONFLICT (user_id, skill_id) DO UPDATE SET progress_percent = 100, last_updated = now();
+  -- Actualizar progreso en skill_proficiency_scores
+  UPDATE skill_proficiency_scores 
+  SET current_score = current_score + 5, 
+      assessments_completed = assessments_completed + 1,
+      last_assessment_date = now(),
+      updated_at = now()
+  WHERE user_id = NEW.user_id AND skill_id = v_skill;
+  
+  -- Si no existe registro, crear uno
+  IF NOT FOUND THEN
+    INSERT INTO skill_proficiency_scores(user_id, skill_id, current_score, cefr_level, assessments_completed, last_assessment_date)
+    VALUES (NEW.user_id, v_skill, 5, 'very_early_a1', 1, now())
+    ON CONFLICT (user_id, skill_id) DO UPDATE SET 
+      current_score = skill_proficiency_scores.current_score + 5,
+      assessments_completed = skill_proficiency_scores.assessments_completed + 1,
+      last_assessment_date = now(),
+      updated_at = now();
+  END IF;
 
   -- Acumular XP
   SELECT total_xp INTO v_total_xp FROM users WHERE id = NEW.user_id;

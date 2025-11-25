@@ -1309,3 +1309,68 @@ export const adoptSession = async (session: { access_token: string; refresh_toke
   return setSession(session.access_token, session.refresh_token);
 };
 
+/**
+ * Create a user profile in the users table after sign up
+ * This is called automatically after successful authentication
+ * 
+ * @param userId - The user ID from Supabase Auth
+ * @param email - User's email address
+ * @param username - User's desired username
+ * @param fullName - User's full name (optional)
+ * @param avatarUrl - User's avatar URL (optional)
+ */
+export const createUserProfile = async (
+  userId: string,
+  email: string,
+  username: string,
+  fullName?: string,
+  avatarUrl?: string
+) => {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .insert({
+        id: userId,
+        email,
+        username: username || email.split('@')[0],
+        full_name: fullName || username,
+        avatar_url: avatarUrl || null,
+        total_xp: 0,
+        level: 1,
+        role: 'learner',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return { data, error: null };
+  } catch (error: unknown) {
+    console.error('Create user profile error:', error instanceof Error ? error.message : String(error));
+    return { data: null, error };
+  }
+};
+
+/**
+ * Check if a username already exists
+ * 
+ * @param username - Username to check
+ */
+export const checkUsernameExists = async (username: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('id')
+      .eq('username', username)
+      .limit(1);
+
+    if (error) throw error;
+    return { exists: data && data.length > 0, error: null };
+  } catch (error: unknown) {
+    console.error('Check username error:', error instanceof Error ? error.message : String(error));
+    return { exists: false, error };
+  }
+};
+
+

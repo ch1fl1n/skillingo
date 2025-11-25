@@ -305,6 +305,63 @@ export async function trackLessonAttempt(input: {
   return data
 }
 
+// ---------------------------------------------
+// Persistencia de evaluaciones por dominio (mastery)
+// ---------------------------------------------
+
+interface LessonEvaluationInsert {
+  user_id: string;
+  lesson_id: number;
+  overall_mastery: 'achieved' | 'not-achieved';
+  overall_score: number;
+  objectives_data: unknown; // JSONB
+  feedback_data: unknown;   // JSONB
+  next_steps?: string[];
+  resources_suggested?: string[];
+  evaluated_at?: string;
+}
+
+// Guarda una evaluación por dominio en la tabla lesson_evaluations
+export async function saveLessonMasteryEvaluation(evaluation: import('@/types/mastery-evaluation.types').MasteryEvaluation) {
+  const userId = await requireAuthUserId();
+  const payload: LessonEvaluationInsert = {
+    user_id: userId,
+    lesson_id: evaluation.lessonId,
+    overall_mastery: evaluation.overallMastery,
+    overall_score: evaluation.overallScore,
+    objectives_data: evaluation.objectives,
+    feedback_data: evaluation.conversationalFeedback,
+    next_steps: evaluation.nextSteps,
+    resources_suggested: evaluation.resourcesSuggested,
+    evaluated_at: evaluation.timestamp,
+  };
+
+  const { data, error } = await supabase
+    .from('lesson_evaluations')
+    .insert(payload)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+// Obtiene la última evaluación de dominio para una lección del usuario actual
+export async function getLatestLessonMasteryEvaluation(lessonId: number) {
+  const userId = await requireAuthUserId();
+  const { data, error } = await supabase
+    .from('lesson_evaluations')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('lesson_id', lessonId)
+    .order('evaluated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
 export async function awardXP(xpAmount: number): Promise<number> {
   return await addUserXp(xpAmount) || 0
 }

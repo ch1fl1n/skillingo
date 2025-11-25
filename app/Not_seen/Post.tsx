@@ -1,5 +1,5 @@
 // app/modal.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,13 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { createCommunityPost } from '@/lib/db';
 import { addPostToModerationQueue } from '@/lib/db';
+import {
+  saveDraft,
+  getCurrentDraft,
+  updateDraft,
+  deleteDraft,
+  PostDraft,
+} from '@/lib/draft-storage';
 
 export default function ModalPostScreen() {
   const router = useRouter();
@@ -21,6 +28,83 @@ export default function ModalPostScreen() {
   const [body, setBody] = useState('');
   const [category, setCategory] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [currentDraftId, setCurrentDraftId] = useState<string | null>(null);
+  const [draftSaved, setDraftSaved] = useState(false);
+  const autoSaveTimerRef = useRef<NodeJS.Timeout | number | null>(null);
+
+  // Load previous draft on component mount
+  useEffect(() => {
+    const loadDraft = async () => {
+      try {
+        const draft = await getCurrentDraft();
+        if (draft) {
+          setTitle(draft.title);
+          setBody(draft.content);
+          setCategory(draft.category);
+          setCurrentDraftId(draft.id);
+        }
+      } catch (error) {
+        console.error('Error loading draft:', error);
+      }
+    };
+
+    loadDraft();
+
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+    };
+  }, []);
+
+  // Auto-save draft every 30 seconds when content changes
+  useEffect(() => {
+    // Reset timer on every change
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+
+    // Don't auto-save empty drafts
+    if (!title.trim() && !body.trim()) {
+      return;
+    }
+
+    autoSaveTimerRef.current = setTimeout(() => {
+      performAutoSave();
+    }, 30000); // 30 seconds
+
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+    };
+  }, [title, body, category]);
+
+  const performAutoSave = async () => {
+    try {
+      if (currentDraftId) {
+        // Update existing draft
+        await updateDraft(currentDraftId, {
+          title: title.trim(),
+          content: body.trim(),
+          category: category.trim(),
+        });
+      } else {
+        // Create new draft
+        const newDraft = await saveDraft({
+          title: title.trim(),
+          content: body.trim(),
+          category: category.trim(),
+        });
+        setCurrentDraftId(newDraft.id);
+      }
+      setDraftSaved(true);
+      // Hide the "saved" indicator after 2 seconds
+      setTimeout(() => setDraftSaved(false), 2000);
+    } catch (error) {
+      console.error('Error auto-saving draft:', error);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!title.trim() || !body.trim()) {
@@ -50,6 +134,11 @@ export default function ModalPostScreen() {
       // Add to moderation queue for review
       await addPostToModerationQueue(post.id);
 
+      // Delete draft after successful submission
+      if (currentDraftId) {
+        await deleteDraft(currentDraftId);
+      }
+
       Alert.alert(
         'Success',
         'Your post has been submitted for review. It will be published once approved by a moderator.',
@@ -63,9 +152,35 @@ export default function ModalPostScreen() {
     }
   };
 
-  const handleSaveDraft = () => {
-    // TODO: Implement draft saving functionality
-    Alert.alert('Info', 'Draft saving will be implemented soon');
+  const handleSaveDraft = async () => {
+    if (!title.trim() && !body.trim()) {
+      Alert.alert('Info', 'Please add some content before saving a draft');
+      return;
+    }
+
+    try {
+      if (currentDraftId) {
+        // Update existing draft
+        await updateDraft(currentDraftId, {
+          title: title.trim(),
+          content: body.trim(),
+          category: category.trim(),
+        });
+      } else {
+        // Create new draft
+        const newDraft = await saveDraft({
+          title: title.trim(),
+          content: body.trim(),
+          category: category.trim(),
+        });
+        setCurrentDraftId(newDraft.id);
+      }
+
+      Alert.alert('Success', 'Draft saved successfully');
+    } catch (error) {
+      console.error('Error saving draft:', error);
+      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to save draft');
+    }
   };
 
   return (
@@ -76,6 +191,9 @@ export default function ModalPostScreen() {
           <MaterialCommunityIcons name="close" size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Create Post</Text>
+        {draftSaved && (
+          <Text style={styles.draftIndicator}>Auto-saved</Text>
+        )}
       </View>
 
       <ScrollView
@@ -160,6 +278,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 18 },
   closeBtn: { position: 'absolute', left: 0 },
   headerTitle: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  draftIndicator: { position: 'absolute', right: 0, color: '#10b981', fontSize: 12, fontWeight: '500' },
   input: { backgroundColor: '#0f1113', color: '#e5e7eb', paddingHorizontal: 14, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: '#161616', fontSize: 14, marginBottom: 14 },
   textArea: { minHeight: 140, textAlignVertical: 'top' },
   charCountContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14 },

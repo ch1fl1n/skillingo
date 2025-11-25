@@ -11,6 +11,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {useColorScheme} from '@/components/useColorScheme';
 import {AuthProvider, useAuth} from '@/contexts/AuthContext';
 import { PerfProvider } from '@/components/tutorial/PerfProvider';
+import { useOnboardingState } from '@/hooks/useOnboardingState';
 
 export {
     // Catch any errors thrown by the Layout component.
@@ -70,9 +71,10 @@ function RootLayoutNav() {
 function AuthenticatedStack() {
     const { user, loading } = useAuth();
     const colorScheme = useColorScheme();
+    const onboarding = useOnboardingState();
 
-    // Show loading screen while checking authentication
-    if (loading) {
+    // Show loading screen while checking authentication and onboarding state
+    if (loading || onboarding.loading) {
         return (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colorScheme === 'dark' ? '#000' : '#fff' }}>
                 <ActivityIndicator size="large" color={colorScheme === 'dark' ? '#fff' : '#3498db'} />
@@ -90,8 +92,15 @@ function AuthenticatedStack() {
                 </>
             ) : (
                 <>
+                    {/* Si onboarding no está completado ni saltado, mostrar onboarding */}
+                    {!onboarding.isCompleted && !onboarding.isSkipped && (
+                        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+                    )}
                     <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                    <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+                    {/* Permitir volver a onboarding si es necesario */}
+                    {(onboarding.isCompleted || onboarding.isSkipped) && (
+                        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+                    )}
                     <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
                 </>
             )}

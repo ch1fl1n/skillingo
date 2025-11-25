@@ -18,6 +18,7 @@ import { updateUserMetadata } from '@/lib/auth-helpers';
 import { supabase } from '@/lib/supabase';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
+import { useOnboardingState } from '@/hooks/useOnboardingState';
 
 import step1Image from '@/assets/images/mascot/step1.jpeg';
 import step2Image from '@/assets/images/mascot/step2.jpeg';
@@ -74,6 +75,7 @@ export default function OnboardingScreen() {
   const { user } = useAuth();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const onboarding = useOnboardingState();
 
   const [currentStep, setCurrentStep] = useState(0);
   const [username, setUsername] = useState('');
@@ -121,8 +123,18 @@ export default function OnboardingScreen() {
     }
   };
 
-  const handleSkip = () => {
-    animateTransition(() => setCurrentStep(ONBOARDING_STEPS.length));
+  const handleSkip = async () => {
+    setLoading(true);
+    try {
+      // Marcar onboarding como saltado en AsyncStorage
+      await onboarding.markAsSkipped();
+      // Navegar a home
+      router.replace('/(tabs)');
+    } catch (err) {
+      console.error('Error skipping onboarding:', err);
+      setError('Failed to skip onboarding. Please try again.');
+      setLoading(false);
+    }
   };
 
   const validateUsername = async (usernameToCheck: string): Promise<boolean> => {
@@ -171,6 +183,9 @@ export default function OnboardingScreen() {
       await supabase.from('users').update({ username }).eq('id', user.id);
 
       await updateUserMetadata({ onboarding_completed: true });
+
+      // Marcar onboarding como completado en AsyncStorage
+      await onboarding.markAsCompleted();
 
       router.replace('/(tabs)');
     } catch (err) {
