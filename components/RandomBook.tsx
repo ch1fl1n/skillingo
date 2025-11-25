@@ -8,6 +8,7 @@ import {
   PanResponder,
   useWindowDimensions,
   StyleSheet,
+  Animated,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -23,6 +24,8 @@ const STORAGE_BOOK = '@RandomBook:book';
 
 // We'll read dimensions dynamically so the bubble behaves correctly on rotation and different devices
 const BUBBLE_SIZE = 64;
+// Toggle to pin bubble to left-center. Set true to disable dragging and keep it fixed.
+const FIXED_LEFT_CENTER = true;
 
 export default function RandomBook(): JSX.Element {
   const [book, setBook] = useState<Book | null>(null);
@@ -30,7 +33,11 @@ export default function RandomBook(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState(true);
   const { width: SCREEN_W, height: SCREEN_H } = useWindowDimensions();
-  const [pos, setPos] = useState({ x: SCREEN_W - BUBBLE_SIZE - 16, y: SCREEN_H - BUBBLE_SIZE - 120 });
+  const leftCenter = { x: 8, y: Math.round(SCREEN_H / 2 - BUBBLE_SIZE / 2) };
+  const initialPos = FIXED_LEFT_CENTER ? leftCenter : { x: SCREEN_W - BUBBLE_SIZE - 16, y: SCREEN_H - BUBBLE_SIZE - 120 };
+  const [pos, setPos] = useState(initialPos);
+  const animatedPos = useRef(new Animated.ValueXY({ x: pos.x, y: pos.y })).current;
+  const dragState = useRef({ dragging: false });
 
   const panStart = useRef({ x: 0, y: 0 });
 
@@ -63,12 +70,19 @@ export default function RandomBook(): JSX.Element {
 
   useEffect(() => {
     AsyncStorage.setItem(STORAGE_POS, JSON.stringify(pos)).catch(() => {});
+    // keep animated value in sync when pos is updated externally (load or after snap)
+    animatedPos.setValue({ x: pos.x, y: pos.y });
   }, [pos]);
 
   // Keep bubble within bounds when orientation/dimensions change
   useEffect(() => {
-    setPos((p) => clampPos(p));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (FIXED_LEFT_CENTER) {
+      const lc = { x: 8, y: Math.round(SCREEN_H / 2 - BUBBLE_SIZE / 2) };
+      setPos(lc);
+      animatedPos.setValue(lc);
+    } else {
+      setPos((p) => clampPos(p));
+    }
   }, [SCREEN_W, SCREEN_H]);
 
   useEffect(() => {
@@ -91,19 +105,50 @@ export default function RandomBook(): JSX.Element {
       onStartShouldSetPanResponder: () => false,
       // Start responding only when there's a clear drag gesture
       onMoveShouldSetPanResponder: (_evt, gestureState) => {
+        if (FIXED_LEFT_CENTER) return false;
         const dx = Math.abs(gestureState.dx || 0);
         const dy = Math.abs(gestureState.dy || 0);
         return dx > 6 || dy > 6; // small threshold
       },
       onPanResponderGrant: () => {
         panStart.current = { x: pos.x, y: pos.y };
+        dragState.current.dragging = false;
       },
       onPanResponderMove: (_evt, gestureState) => {
+        if (FIXED_LEFT_CENTER) return;
+        dragState.current.dragging = true;
         const nx = panStart.current.x + gestureState.dx;
         const ny = panStart.current.y + gestureState.dy;
-        setPos(clampPos({ x: nx, y: ny }));
+        const clamped = clampPos({ x: nx, y: ny });
+        // update animated position for smooth movement
+        animatedPos.setValue({ x: clamped.x, y: clamped.y });
       },
-      onPanResponderRelease: () => {},
+      onPanResponderRelease: (_evt, gestureState) => {
+        if (FIXED_LEFT_CENTER) return;
+        // apply small inertia based on gesture velocity then snap to nearest edge
+        const INERTIA = 300; // multiplier for velocity to pixels
+        const projectedX = panStart.current.x + gestureState.dx + (gestureState.vx || 0) * INERTIA;
+        const projectedY = panStart.current.y + gestureState.dy + (gestureState.vy || 0) * INERTIA;
+        const afterInertia = clampPos({ x: projectedX, y: projectedY });
+
+        // snap horizontally to nearest edge
+        const centerX = afterInertia.x + BUBBLE_SIZE / 2;
+        const snapX = centerX < SCREEN_W / 2 ? 8 : SCREEN_W - BUBBLE_SIZE - 8;
+        const snapY = afterInertia.y; // keep vertical where released (clamped)
+
+        // animate to snap position
+        Animated.spring(animatedPos, {
+          toValue: { x: snapX, y: snapY },
+          useNativeDriver: false,
+          speed: 20,
+          bounciness: 6,
+        }).start(() => {
+          // persist final position
+          const final = { x: snapX, y: snapY };
+          setPos(final);
+          dragState.current.dragging = false;
+        });
+      },
       onPanResponderTerminationRequest: () => true,
     })
   ).current;
@@ -176,8 +221,8 @@ export default function RandomBook(): JSX.Element {
 
   return (
     <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
-      <View
-        style={[styles.container, { left: pos.x, top: pos.y, width: collapsed ? BUBBLE_SIZE : 260 }]}
+      <Animated.View
+        style={[styles.container, animatedPos.getLayout(), { width: collapsed ? BUBBLE_SIZE : 260 }]}
         {...panResponder.panHandlers}
       >
         <TouchableOpacity activeOpacity={0.9} onPress={toggleCollapsed} style={styles.bubbleTouch}>
@@ -224,7 +269,7 @@ export default function RandomBook(): JSX.Element {
             </View>
           )}
         </TouchableOpacity>
-      </View>
+      </Animated.View>
     </View>
   );
 }
