@@ -151,7 +151,9 @@ export default function EditProfileScreen() {
       if (!previewUrl) {
         try {
           const { data: signedData, error: signedErr } = await supabase.storage.from(bucket).createSignedUrl(path, 60 * 60 * 24);
-          if (!signedErr && (signedData as { signedUrl?: string })?.signedUrl) previewUrl = (signedData as { signedUrl?: string }).signedUrl;
+          if (!signedErr && (signedData as { signedUrl?: string })?.signedUrl) {
+            previewUrl = (signedData as { signedUrl?: string }).signedUrl ?? null;
+          }
         } catch (e) {
           console.warn('createSignedUrl fallback error', e);
         }

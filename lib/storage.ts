@@ -43,7 +43,8 @@ export async function createSignedUrls(
   expiresIn: number,
   options?: { download?: string | boolean }
 ) {
-  const { data, error } = await supabase.storage.from(bucketId).createSignedUrls(paths, expiresIn, options);
+  const validOptions = options ? { ...options, download: options.download ?? false } : undefined;
+  const { data, error } = await supabase.storage.from(bucketId).createSignedUrls(paths, expiresIn, validOptions);
   if (error) throw error;
   return data;
 }

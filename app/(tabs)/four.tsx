@@ -1,12 +1,23 @@
+// app/(tabs)/four.tsx
 import * as React from 'react';
-import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Switch,
+  TouchableOpacity,
+  Alert,
+} from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 
 export default function TabFourScreen() {
   const router = useRouter();
-  const { profile } = useAuth();
+  // intentamos obtener signOut desde el contexto; si no existe, usaremos supabase.auth.signOut()
+  const { profile, signOut } = useAuth() as any;
   const isModerator = profile?.role === 'moderator' || profile?.role === 'admin';
 
   const [settings, setSettings] = React.useState({
@@ -28,6 +39,32 @@ export default function TabFourScreen() {
     setSettings(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
+  async function doLogout() {
+    try {
+      // preferir signOut del contexto (si está disponible)
+      if (typeof signOut === 'function') {
+        await signOut();
+      } else {
+        // fallback a Supabase directamente
+        const { error } = await supabase.auth.signOut();
+        if (error) throw error;
+      }
+
+      // navegar a login (replace para evitar volver con back)
+      router.replace('/login');
+    } catch (err) {
+      console.error('Logout error', err);
+      Alert.alert('Error', 'No se pudo cerrar sesión: ' + ((err as any)?.message ?? JSON.stringify(err)));
+    }
+  }
+
+  function confirmLogout() {
+    Alert.alert('Cerrar sesión', '¿Estás seguro de que quieres cerrar sesión?', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Cerrar sesión', style: 'destructive', onPress: () => void doLogout() },
+    ]);
+  }
+
   return (
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false} style={{ paddingHorizontal: 18 }}>
@@ -38,8 +75,8 @@ export default function TabFourScreen() {
         {/* Quick Actions */}
         <View style={styles.quickActionsSection}>
           <Text style={styles.sectionLabel}>Quick Actions</Text>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={styles.actionButton}
             onPress={() => router.push('/community/create')}
             activeOpacity={0.7}
@@ -55,7 +92,7 @@ export default function TabFourScreen() {
           </TouchableOpacity>
 
           {isModerator && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.actionButton}
               onPress={() => router.push('/moderation')}
               activeOpacity={0.7}
@@ -88,7 +125,7 @@ export default function TabFourScreen() {
           />
         </View>
 
-        {/* Section */}
+        {/* General Notifications */}
         <Text style={styles.sectionLabel}>General Notifications</Text>
 
         {renderToggle(
@@ -127,10 +164,10 @@ export default function TabFourScreen() {
         {renderToggle("Digital Content Updates", "Alerts for new digital fluency modules.", "digitalContent")}
         {renderToggle("Global Citizenship Alerts", "Updates on global topics and discussions.", "globalCitizenship")}
 
-        {/* Dummy: Logout */}
+        {/* Account: Logout */}
         <Text style={styles.sectionLabel}>Account</Text>
 
-        <TouchableOpacity style={styles.logoutButton}>
+        <TouchableOpacity style={styles.logoutButton} onPress={confirmLogout}>
           <MaterialCommunityIcons name="logout" size={20} color="#ff6b6b" />
           <Text style={styles.logoutText}>Log Out</Text>
         </TouchableOpacity>
