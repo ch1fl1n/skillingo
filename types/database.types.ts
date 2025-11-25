@@ -38,13 +38,51 @@ export type Database = {
         }
         Relationships: []
       }
+      comment_likes: {
+        Row: {
+          comment_id: number
+          created_at: string | null
+          id: number
+          user_id: string
+        }
+        Insert: {
+          comment_id: number
+          created_at?: string | null
+          id?: number
+          user_id: string
+        }
+        Update: {
+          comment_id?: number
+          created_at?: string | null
+          id?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comment_likes_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "comments_with_details"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comment_likes_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "post_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       community_posts: {
         Row: {
           approved_at: string | null
           category: string | null
+          comments_count: number | null
           content: string
           created_at: string | null
           id: number
+          likes_count: number | null
           status: string | null
           title: string
           user_id: string | null
@@ -52,9 +90,11 @@ export type Database = {
         Insert: {
           approved_at?: string | null
           category?: string | null
+          comments_count?: number | null
           content: string
           created_at?: string | null
           id?: number
+          likes_count?: number | null
           status?: string | null
           title: string
           user_id?: string | null
@@ -62,9 +102,11 @@ export type Database = {
         Update: {
           approved_at?: string | null
           category?: string | null
+          comments_count?: number | null
           content?: string
           created_at?: string | null
           id?: number
+          likes_count?: number | null
           status?: string | null
           title?: string
           user_id?: string | null
@@ -169,6 +211,90 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "moderation_queue_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "community_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_comments: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: number
+          is_edited: boolean | null
+          parent_comment_id: number | null
+          post_id: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: number
+          is_edited?: boolean | null
+          parent_comment_id?: number | null
+          post_id: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: number
+          is_edited?: boolean | null
+          parent_comment_id?: number | null
+          post_id?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_comments_parent_comment_id_fkey"
+            columns: ["parent_comment_id"]
+            isOneToOne: false
+            referencedRelation: "comments_with_details"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_comments_parent_comment_id_fkey"
+            columns: ["parent_comment_id"]
+            isOneToOne: false
+            referencedRelation: "post_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "community_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_likes: {
+        Row: {
+          created_at: string | null
+          id: number
+          post_id: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: number
+          post_id: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: number
+          post_id?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_likes_post_id_fkey"
             columns: ["post_id"]
             isOneToOne: false
             referencedRelation: "community_posts"
@@ -437,7 +563,46 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      comments_with_details: {
+        Row: {
+          avatar_url: string | null
+          content: string | null
+          created_at: string | null
+          id: number | null
+          is_edited: boolean | null
+          level: number | null
+          likes_count: number | null
+          parent_comment_id: number | null
+          post_id: number | null
+          replies_count: number | null
+          updated_at: string | null
+          user_id: string | null
+          username: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_comments_parent_comment_id_fkey"
+            columns: ["parent_comment_id"]
+            isOneToOne: false
+            referencedRelation: "comments_with_details"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_comments_parent_comment_id_fkey"
+            columns: ["parent_comment_id"]
+            isOneToOne: false
+            referencedRelation: "post_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "community_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       [_ in never]: never

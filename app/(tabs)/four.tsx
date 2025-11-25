@@ -1,8 +1,14 @@
 import * as React from 'react';
 import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function TabFourScreen() {
+  const router = useRouter();
+  const { profile } = useAuth();
+  const isModerator = profile?.role === 'moderator' || profile?.role === 'admin';
+
   const [settings, setSettings] = React.useState({
     adaptive: false,
     dailyLessons: false,
@@ -28,6 +34,43 @@ export default function TabFourScreen() {
 
         {/* Page Title */}
         <Text style={styles.pageTitle}>Settings</Text>
+
+        {/* Quick Actions */}
+        <View style={styles.quickActionsSection}>
+          <Text style={styles.sectionLabel}>Quick Actions</Text>
+          
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={() => router.push('/community/create')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: '#3b82f6' }]}>
+              <MaterialCommunityIcons name="pencil" size={20} color="#fff" />
+            </View>
+            <View style={styles.actionContent}>
+              <Text style={styles.actionTitle}>Create Post</Text>
+              <Text style={styles.actionDesc}>Share with the community</Text>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={20} color="#666" />
+          </TouchableOpacity>
+
+          {isModerator && (
+            <TouchableOpacity 
+              style={styles.actionButton}
+              onPress={() => router.push('/moderation')}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.actionIcon, { backgroundColor: '#10b981' }]}>
+                <MaterialCommunityIcons name="shield-check" size={20} color="#fff" />
+              </View>
+              <View style={styles.actionContent}>
+                <Text style={styles.actionTitle}>Moderation</Text>
+                <Text style={styles.actionDesc}>Review pending posts</Text>
+              </View>
+              <MaterialCommunityIcons name="chevron-right" size={20} color="#666" />
+            </TouchableOpacity>
+          )}
+        </View>
 
         {/* Section */}
         <Text style={styles.sectionLabel}>Adaptive Reminders</Text>
@@ -135,6 +178,44 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: 28,
     marginBottom: 10,
+  },
+
+  quickActionsSection: {
+    marginBottom: 12,
+  },
+
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#161718',
+    padding: 14,
+    borderRadius: 14,
+    marginBottom: 12,
+  },
+
+  actionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+
+  actionContent: {
+    flex: 1,
+  },
+
+  actionTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+
+  actionDesc: {
+    color: '#999',
+    fontSize: 13,
   },
 
   row: {

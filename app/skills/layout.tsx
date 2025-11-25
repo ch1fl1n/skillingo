@@ -3,26 +3,21 @@ import { View, StyleSheet, Text } from 'react-native';
 import { Slot, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useAuth } from '@/contexts/AuthContext';
-import { usePerf } from '@/components/tutorial/PerfProvider';
 
 SplashScreen.preventAutoHideAsync();
 
 /**
  * Skills layout optimizado para performance:
  * - Lazy loading de pantallas con react-native-screens
- * - Medición de tiempo de inicialización
  * - Prefetch configurado en onboarding
  * - Auth guard con tolerancia (máximo 3s espera)
  */
 export default function SkillsLayout() {
   const { user, loading } = useAuth();
-  const { mark, measure } = usePerf();
   const router = useRouter();
 
   useEffect(() => {
     const handleAuthCheck = async () => {
-      mark('skills-auth-check-start');
-
       // Timeout de seguridad: máximo 3 segundos
       const timeoutId = setTimeout(() => {
         console.warn('[Skills] Auth check timeout');
@@ -31,9 +26,6 @@ export default function SkillsLayout() {
 
       if (!loading) {
         clearTimeout(timeoutId);
-        measure('skills-auth-check', 'skills-auth-check-start', {
-          authenticated: !!user,
-        });
 
         if (!user) {
           router.replace('/login');
