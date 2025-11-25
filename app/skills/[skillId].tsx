@@ -61,10 +61,15 @@ export default function LessonsListScreen() {
       <TouchableOpacity
         style={[
           styles.lessonCard,
-          { backgroundColor: colors.surface?.default || '#2a2a2a' },
+          { backgroundColor: colors.surface?.default || '#f5f5f5' },
           item.completed && styles.completedCard,
         ]}
-        onPress={() => router.push(`/lesson/${item.id}`)}
+        onPress={() =>
+          router.push({
+            pathname: '/lesson/[lessonId]',
+            params: { lessonId: String(item.id) },
+          })
+        }
         activeOpacity={0.7}
       >
         <View style={styles.lessonHeader}>

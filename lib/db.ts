@@ -27,24 +27,38 @@ export async function createCommunityPost(input: {
   content: string
   category?: string | null
 }) {
-  const userId = await requireAuthUserId()
+  try {
+    const userId = await requireAuthUserId()
+    console.log('Creating post for user:', userId)
 
-  const payload: TablesInsert<'community_posts'> = {
-    title: input.title,
-    content: input.content,
-    category: input.category ?? null,
-    user_id: userId,
-    status: 'pending',
+    const payload: TablesInsert<'community_posts'> = {
+      title: input.title,
+      content: input.content,
+      category: input.category ?? null,
+      user_id: userId,
+      status: 'approved',
+      approved_at: new Date().toISOString(),
+    }
+
+    console.log('Insert payload:', payload)
+
+    const { data, error } = await supabase
+      .from('community_posts')
+      .insert(payload)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Supabase error:', error)
+      throw new Error(`Database error: ${error.message}`)
+    }
+    
+    console.log('Post created successfully:', data)
+    return data;
+  } catch (err) {
+    console.error('Error in createCommunityPost:', err)
+    throw err
   }
-
-  const { data, error } = await supabase
-    .from('community_posts')
-    .insert(payload)
-    .select()
-    .single()
-
-  if (error) throw error
-  return data;
 }
 
 export async function listCommunityPosts(params?: {
@@ -111,6 +125,50 @@ export async function ratePost(postId: number, rating: number) {
 
   if (error) throw error
   return data
+}
+
+export async function getCommunityPostById(postId: number) {
+  const { data, error } = await supabase
+    .from('community_posts')
+    .select('*')
+    .eq('id', postId)
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function getMyPostRating(postId: number) {
+  try {
+    const userId = await requireAuthUserId()
+    const { data, error } = await supabase
+      .from('post_ratings')
+      .select('rating')
+      .eq('post_id', postId)
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    if (error) throw error
+    return data?.rating || null
+  } catch {
+    return null
+  }
+}
+
+export async function listPendingPosts(params?: {
+  limit?: number
+  offset?: number
+}) {
+  const { limit = 20, offset = 0 } = params || {}
+  const { data, error } = await supabase
+    .from('community_posts')
+    .select('*')
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1)
+
+  if (error) throw error
+  return data || []
 }
 
 // -----------------------------
@@ -543,5 +601,240 @@ export async function getStudentStrength(userId: string) {
     mastery_level: strongest.average_progress,
     is_mastered: strongest.category_mastered,
     strength_summary: `${strongest.category}: ${strongest.completed_skills}/${strongest.total_skills} completadas`,
+  }
+}
+
+// -----------------------------
+// Post Likes
+// -----------------------------
+
+export async function likePost(postId: number) {
+  const userId = await requireAuthUserId()
+  
+  const { data, error } = await supabase
+    .from('post_likes')
+    .insert({ post_id: postId, user_id: userId })
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function unlikePost(postId: number) {
+  const userId = await requireAuthUserId()
+  
+  const { error } = await supabase
+    .from('post_likes')
+    .delete()
+    .eq('post_id', postId)
+    .eq('user_id', userId)
+
+  if (error) throw error
+}
+
+export async function getPostLikes(postId: number) {
+  const { data, error } = await supabase
+    .from('post_likes')
+    .select('id, user_id, created_at')
+    .eq('post_id', postId)
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+  return data || []
+}
+
+export async function isPostLikedByMe(postId: number) {
+  try {
+    const userId = await requireAuthUserId()
+    const { data, error } = await supabase
+      .from('post_likes')
+      .select('id')
+      .eq('post_id', postId)
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    if (error) throw error
+    return !!data
+  } catch {
+    return false
+  }
+}
+
+// -----------------------------
+// Post Comments
+// -----------------------------
+
+export async function createComment(input: {
+  postId: number
+  content: string
+  parentCommentId?: number | null
+}) {
+  const userId = await requireAuthUserId()
+  
+  const payload: TablesInsert<'post_comments'> = {
+    post_id: input.postId,
+    user_id: userId,
+    content: input.content,
+    parent_comment_id: input.parentCommentId ?? null,
+  }
+
+  const { data, error } = await supabase
+    .from('post_comments')
+    .insert(payload)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function getPostComments(postId: number) {
+  const { data, error } = await supabase
+    .from('post_comments')
+    .select('*')
+    .eq('post_id', postId)
+    .is('parent_comment_id', null)
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    console.error('Error fetching comments:', error)
+    throw error
+  }
+  
+  if (!data) return []
+  
+  // Fetch user info separately for each comment
+  const commentsWithUsers = await Promise.all(
+    data.map(async (comment) => {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('username, avatar_url, level')
+        .eq('id', comment.user_id)
+        .single()
+      
+      return {
+        ...comment,
+        users: userData || null
+      }
+    })
+  )
+  
+  return commentsWithUsers
+}
+
+export async function getCommentReplies(parentCommentId: number) {
+  const { data, error } = await supabase
+    .from('post_comments')
+    .select('*')
+    .eq('parent_comment_id', parentCommentId)
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    console.error('Error fetching comment replies:', error)
+    throw error
+  }
+  
+  if (!data) return []
+  
+  // Fetch user info separately for each comment
+  const repliesWithUsers = await Promise.all(
+    data.map(async (comment) => {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('username, avatar_url, level')
+        .eq('id', comment.user_id)
+        .single()
+      
+      return {
+        ...comment,
+        users: userData || null
+      }
+    })
+  )
+  
+  return repliesWithUsers
+}
+
+export async function updateComment(commentId: number, content: string) {
+  const userId = await requireAuthUserId()
+  
+  const { data, error } = await supabase
+    .from('post_comments')
+    .update({ content })
+    .eq('id', commentId)
+    .eq('user_id', userId)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function deleteComment(commentId: number) {
+  const userId = await requireAuthUserId()
+  
+  const { error } = await supabase
+    .from('post_comments')
+    .delete()
+    .eq('id', commentId)
+    .eq('user_id', userId)
+
+  if (error) throw error
+}
+
+// -----------------------------
+// Comment Likes
+// -----------------------------
+
+export async function likeComment(commentId: number) {
+  const userId = await requireAuthUserId()
+  
+  const { data, error } = await supabase
+    .from('comment_likes')
+    .insert({ comment_id: commentId, user_id: userId })
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function unlikeComment(commentId: number) {
+  const userId = await requireAuthUserId()
+  
+  const { error } = await supabase
+    .from('comment_likes')
+    .delete()
+    .eq('comment_id', commentId)
+    .eq('user_id', userId)
+
+  if (error) throw error
+}
+
+export async function getCommentLikesCount(commentId: number) {
+  const { count, error } = await supabase
+    .from('comment_likes')
+    .select('*', { count: 'exact', head: true })
+    .eq('comment_id', commentId)
+
+  if (error) throw error
+  return count || 0
+}
+
+export async function isCommentLikedByMe(commentId: number) {
+  try {
+    const userId = await requireAuthUserId()
+    const { data, error } = await supabase
+      .from('comment_likes')
+      .select('id')
+      .eq('comment_id', commentId)
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    if (error) throw error
+    return !!data
+  } catch {
+    return false
   }
 }

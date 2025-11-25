@@ -10,7 +10,6 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useLesson, useCompleteLessonMutation, useUserProgress } from '@/lib/api/lessons';
-import { usePerf } from '@/components/tutorial/PerfProvider';
 
 /**
  * Pantalla de lección con optimizaciones de performance:
@@ -18,12 +17,10 @@ import { usePerf } from '@/components/tutorial/PerfProvider';
  * - Imágenes con blurhash placeholder
  * - Prefetch de siguiente lección
  * - Progress submit optimista con offline queue
- * - Medición P95 de tiempo de carga
  */
 export default function LessonScreen() {
   const { lessonId } = useLocalSearchParams<{ lessonId: string }>();
   const router = useRouter();
-  const { mark, measure } = usePerf();
 
   const lessonIdNum = parseInt(lessonId || '', 10);
   const { data: lesson, isLoading, error } = useLesson(lessonIdNum, true);

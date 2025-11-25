@@ -8,26 +8,22 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useWikiArticle } from '@/lib/api/wiki';
-import { usePerf } from '@/components/tutorial/PerfProvider';
 
 /**
  * Pantalla Wiki con optimizaciones:
  * - Progressive rendering con skeleton
  * - Imágenes con blurhash LQIP
  * - ETag caching para articulos
- * - Medición P95 de tiempo de visualización
  * - Markdown básico renderizado
  */
 export default function WikiScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const router = useRouter();
-  const { mark, measure } = usePerf();
 
   const { data: article, isLoading, error } = useWikiArticle(slug || '');
 
   useEffect(() => {
     if (slug) {
-      mark('wiki-screen-enter');
       measure('wiki-screen-enter', 'wiki-screen-enter', {
         slug,
       });
