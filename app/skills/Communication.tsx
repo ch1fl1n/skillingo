@@ -13,6 +13,7 @@ const SKILL_OBJECTIVES = [
 export default function Communication() {
   const [answer, setAnswer] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('Evaluando tu respuesta...');
   const router = useRouter();
 
   const handleSubmit = async () => {
@@ -22,6 +23,8 @@ export default function Communication() {
     }
 
     setLoading(true);
+    setLoadingMessage('Evaluando tu respuesta...');
+    
     try {
       const context: LessonEvaluationContext = {
         lessonId: 3,
@@ -32,6 +35,9 @@ export default function Communication() {
         studentResponse: answer,
       };
 
+      // Actualizar mensaje mientras procesa
+      setLoadingMessage('Analizando tu comunicación...');
+      
       const evaluation = await evaluateWithMastery(context);
       
       // Navigate to result screen with evaluation data
@@ -48,6 +54,7 @@ export default function Communication() {
       Alert.alert('Error', 'Failed to evaluate your answer. Please try again.');
     } finally {
       setLoading(false);
+      setLoadingMessage('Evaluando tu respuesta...');
     }
   };
 
@@ -82,7 +89,10 @@ export default function Communication() {
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator color="#000" />
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator color="#000" />
+              <Text style={styles.loadingText}>{loadingMessage}</Text>
+            </View>
           ) : (
             <Text style={styles.buttonText}>Submit</Text>
           )}
@@ -112,6 +122,8 @@ const styles = StyleSheet.create({
   button: { backgroundColor: '#00ff88', padding: 12, marginTop: 15, borderRadius: 5 },
   buttonDisabled: { backgroundColor: '#00cc66', opacity: 0.7 },
   buttonText: { color: '#000', textAlign: 'center', fontWeight: 'bold' },
+  loadingContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  loadingText: { color: '#000', marginLeft: 10, fontSize: 14 },
   bottomNav: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 30, paddingBottom: 20 },
   navItem: { color: '#fff' }
 });

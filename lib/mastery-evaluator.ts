@@ -174,7 +174,7 @@ function calculateOverallMastery(
 
 /**
  * Evalúa la respuesta de un estudiante usando Gemini
- * Si Gemini falla (429, 401, etc), usa evaluaciones mock
+ * Si Gemini falla (429, 401, etc), usa evaluaciones mock con delay simulado
  */
 export async function evaluateWithMastery(
   context: LessonEvaluationContext,
@@ -229,9 +229,19 @@ export async function evaluateWithMastery(
   } catch (error) {
     console.error('Error en evaluateWithMastery:', error);
     
-    // Fallback: usar evaluación mock si Gemini falla
-    console.log(`[EVALUACIÓN MOCK] Usando evaluación local para lección ${context.lessonId}`);
-    console.log(`[EVALUACIÓN MOCK] Dificultad: ${context.difficulty}`);
+    // Verificar si es un error de rate limiting
+    const isRateLimit = error instanceof Error && 
+      (error.message.includes('429') || error.message.includes('Too Many Requests'));
+    
+    if (isRateLimit) {
+      console.log(`[RATE LIMIT] API agotada, usando evaluación mock con delay simulado`);
+    } else {
+      console.log(`[API ERROR] Gemini falló, usando evaluación local para lección ${context.lessonId}`);
+    }
+    
+    // Simular procesamiento con delay para mejor UX
+    const processingDelay = isRateLimit ? 2000 : 1000; // 2s para rate limit, 1s para otros errores
+    await new Promise(resolve => setTimeout(resolve, processingDelay));
     
     // Primero intenta con la versión expandida (soporta todas las 50 lecciones)
     const mockEval = getMockEvaluationExpanded(context.lessonId, context.difficulty);

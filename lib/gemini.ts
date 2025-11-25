@@ -35,19 +35,44 @@ export async function generateText(prompt: string, model: string = defaultModel)
 export async function generateContent(body: GeminiGenerateContentRequest, model: string = defaultModel): Promise<string> {
   ensureKey();
   const url = `${BASE_URL}/${model}:generateContent?key=${GEMINI_API_KEY}`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(`Error ${res.status}: ${txt}`);
+
+  const maxRetries = 3;
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      if (res.ok) {
+        const data: GeminiGenerateContentResponse = await res.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!text) throw new Error('Respuesta vacía de Gemini');
+        return text;
+      }
+
+      // Si es 429 (Too Many Requests), esperar y reintentar
+      if (res.status === 429 && attempt < maxRetries) {
+        const delay = Math.pow(2, attempt) * 1000; // Exponential backoff: 1s, 2s, 4s
+        console.log(`Rate limit alcanzado, esperando ${delay}ms antes de reintentar...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+
+      // Para otros errores, no reintentar
+      const txt = await res.text();
+      throw new Error(`Error ${res.status}: ${txt}`);
+
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error('Error desconocido');
+      if (attempt === maxRetries) break;
+    }
   }
-  const data: GeminiGenerateContentResponse = await res.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error('Respuesta vacía de Gemini');
-  return text;
+
+  throw lastError || new Error('Error desconocido después de reintentos');
 }
 
 export async function safeGenerateText(prompt: string, model?: string): Promise<{ ok: boolean; text?: string; error?: string }> {
