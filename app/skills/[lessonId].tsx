@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useLesson, useCompleteLessonMutation, useUserProgress } from '@/lib/api/lessons';
+import { usePerf } from '@/components/tutorial/PerfProvider';
 
 /**
  * Pantalla de lección con optimizaciones de performance:
@@ -24,8 +25,9 @@ export default function LessonScreen() {
 
   const lessonIdNum = parseInt(lessonId || '', 10);
   const { data: lesson, isLoading, error } = useLesson(lessonIdNum, true);
-  const { data: progress } = useUserProgress(lesson?.skillId || 0);
+  const { data: progress } = useUserProgress(lesson?.skill_id || 0);
   const completeMutation = useCompleteLessonMutation();
+  const { mark, measure } = usePerf();
 
   useEffect(() => {
     if (lessonId) {
@@ -45,7 +47,7 @@ export default function LessonScreen() {
     try {
       const result = await completeMutation.mutateAsync({
         lessonId: lesson.id,
-        skillId: lesson.skillId,
+        skillId: lesson.skill_id!,
         xpGained,
       });
 
@@ -136,7 +138,7 @@ export default function LessonScreen() {
           </Text>
           {progress && (
             <Text style={styles.progressText}>
-              Progreso: {progress.completedLessons} lecciones completadas
+              Progreso: {progress.progress_percent}%
             </Text>
           )}
         </View>
@@ -144,7 +146,7 @@ export default function LessonScreen() {
         {/* Content */}
         <View style={styles.contentSection}>
           <Text style={styles.contentText}>{lesson.description}</Text>
-          <Text style={styles.contentBody}>{lesson.content}</Text>
+          <Text style={styles.contentBody}>{String(lesson.content)}</Text>
         </View>
 
         {/* Button */}
