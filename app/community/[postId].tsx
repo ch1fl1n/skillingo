@@ -8,9 +8,11 @@ import {
   SafeAreaView,
   ActivityIndicator,
   TextInput,
+  Alert,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+<<<<<<< Updated upstream
 import {
   usePostDetail,
   useLikePost,
@@ -19,6 +21,22 @@ import {
   useCreateComment,
   useCommunityCleanup,
 } from '@/hooks/useCommunity';
+=======
+import { 
+  getCommunityPostById, 
+  ratePost, 
+  getMyPostRating,
+  likePost,
+  unlikePost,
+  isPostLikedByMe,
+  getPostComments,
+  createComment,
+  deleteCommunityPost,
+  deleteComment,
+} from '@/lib/db';
+import { useAuth } from '@/contexts/AuthContext';
+import type { Tables } from '@/types/database.types';
+>>>>>>> Stashed changes
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
 
@@ -28,7 +46,9 @@ export default function PostDetailScreen() {
   const postId = parseInt(params.postId as string, 10);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const { user } = useAuth();
 
+<<<<<<< Updated upstream
   // Cleanup debounce timers on unmount
   useCommunityCleanup();
 
@@ -45,6 +65,26 @@ export default function PostDetailScreen() {
   const { comments, addComment: addCommentToList } = usePostComments(postId);
   const { createComment, loading: commentLoading } = useCreateComment();
 
+=======
+  const [post, setPost] = useState<CommunityPost | null>(null);
+  const [myRating, setMyRating] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [ratingLoading, setRatingLoading] = useState(false);
+  
+  // Likes state
+  const [isLiked, setIsLiked] = useState(false);
+  const [likesCount, setLikesCount] = useState(0);
+  
+  // Comments state
+  const [comments, setComments] = useState<Array<{
+    id: number;
+    content: string;
+    created_at: string;
+    user_id: string;
+    users: { username: string; avatar_url: string | null; level: number } | null;
+  }>>([]);
+>>>>>>> Stashed changes
   const [commentText, setCommentText] = useState('');
   const [commentsExpanded, setCommentsExpanded] = useState(false);
   const [ratingLoading, setRatingLoading] = useState(false);
@@ -52,9 +92,38 @@ export default function PostDetailScreen() {
   // Memoized post data to prevent unnecessary re-renders
   const post = useMemo(() => postDetailData?.post, [postDetailData?.post]);
 
+<<<<<<< Updated upstream
   // Memoized handler for rating with loading state
   const handleRateWithLoading = useCallback(
     async (newRating: number) => {
+=======
+  const loadPost = async () => {
+    try {
+      setLoading(true);
+      const [postData, ratingData, likedStatus, commentsData] = await Promise.all([
+        getCommunityPostById(postId),
+        getMyPostRating(postId),
+        isPostLikedByMe(postId),
+        getPostComments(postId),
+      ]);
+      setPost(postData);
+      setMyRating(ratingData);
+      setIsLiked(likedStatus);
+      setLikesCount((postData as any).likes_count || 0);
+      console.log('Loaded comments:', commentsData);
+      console.log('Current user ID:', user?.id);
+      setComments(commentsData);
+    } catch (err) {
+      console.error('Error loading post:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load post');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRate = async (rating: number) => {
+    try {
+>>>>>>> Stashed changes
       setRatingLoading(true);
       try {
         await handleRate(newRating);
@@ -84,6 +153,61 @@ export default function PostDetailScreen() {
       alert(err instanceof Error ? err.message : 'Failed to post comment');
     }
   }, [commentText, postId, createComment, addCommentToList]);
+
+  const handleDelete = async () => {
+    console.log('DELETE POST BUTTON CLICKED');
+    console.log('Post ID:', postId);
+    console.log('User ID:', user?.id);
+    console.log('Post user_id:', post?.user_id);
+    
+    try {
+      console.log('STARTING POST DELETE');
+      await deleteCommunityPost(postId);
+      console.log('POST DELETED SUCCESSFULLY');
+      router.replace('/(tabs)/two');
+      Alert.alert('Success', 'Post deleted successfully');
+    } catch (err) {
+      console.error('POST DELETE FAILED:', err);
+      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to delete post');
+    }
+  };
+
+  const handleDeleteOld = async () => {
+    Alert.alert(
+      'Delete Post',
+      'Are you sure you want to delete this post? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteCommunityPost(postId);
+              Alert.alert('Success', 'Post deleted successfully');
+              router.back();
+            } catch (err) {
+              console.error('Error deleting post:', err);
+              Alert.alert('Error', err instanceof Error ? err.message : 'Failed to delete post');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteComment = async (commentId: number) => {
+    try {
+      console.log('STARTING DELETE for comment:', commentId);
+      await deleteComment(commentId);
+      console.log('DELETE SUCCESSFUL');
+      setComments(prev => prev.filter(c => c.id !== commentId));
+      Alert.alert('Success', 'Comment deleted');
+    } catch (err) {
+      console.error('DELETE FAILED:', err);
+      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to delete comment');
+    }
+  };
 
   const getCategoryColor = (category: string | null) => {
     const categoryColors: Record<string, string> = {
@@ -135,7 +259,13 @@ export default function PostDetailScreen() {
           <MaterialCommunityIcons name="arrow-left" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Post</Text>
-        <View style={styles.placeholder} />
+        {post && user?.id === post.user_id ? (
+          <TouchableOpacity onPress={handleDelete} style={styles.deleteButton}>
+            <MaterialCommunityIcons name="delete-outline" size={24} color="#ef4444" />
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.placeholder} />
+        )}
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
@@ -241,7 +371,10 @@ export default function PostDetailScreen() {
             </View>
           ) : (
             <View style={styles.commentsList}>
-              {comments.map((comment) => (
+              {comments.map((comment) => {
+                const isMyComment = user?.id === comment.user_id;
+                console.log(`Comment ${comment.id}: user=${user?.id}, comment.user_id=${comment.user_id}, isMyComment=${isMyComment}`);
+                return (
                 <View key={comment.id} style={styles.commentItem}>
                   <View style={styles.commentHeader}>
                     <View style={styles.commentAvatarSmall}>
@@ -255,12 +388,26 @@ export default function PostDetailScreen() {
                         {new Date(comment.created_at).toLocaleDateString()}
                       </Text>
                     </View>
+                    {isMyComment && (
+                      <TouchableOpacity
+                        onPress={() => {
+                          console.log('Delete button clicked for comment:', comment.id);
+                          console.log('User ID:', user?.id, 'Comment user_id:', comment.user_id);
+                          handleDeleteComment(comment.id);
+                        }}
+                        style={styles.commentDeleteButton}
+                        activeOpacity={0.7}
+                      >
+                        <MaterialCommunityIcons name="delete-outline" size={18} color="#ef4444" />
+                      </TouchableOpacity>
+                    )}
                   </View>
                   <Text style={[styles.commentContent, { color: colors.text }]}>
                     {comment.content}
                   </Text>
                 </View>
-              ))}
+                );
+              })}
             </View>
           )}
         </View>
@@ -323,6 +470,9 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
+  },
+  deleteButton: {
+    padding: 8,
   },
   placeholder: {
     width: 40,
@@ -511,6 +661,9 @@ const styles = StyleSheet.create({
   commentTime: {
     fontSize: 12,
     color: '#9ca3af',
+  },
+  commentDeleteButton: {
+    padding: 4,
   },
   commentContent: {
     fontSize: 14,

@@ -171,6 +171,19 @@ export async function listPendingPosts(params?: {
   return data || []
 }
 
+export async function deleteCommunityPost(postId: number) {
+  const userId = await requireAuthUserId()
+  
+  // Delete the post (must be owned by user or user is moderator/admin)
+  const { error } = await supabase
+    .from('community_posts')
+    .delete()
+    .eq('id', postId)
+    .eq('user_id', userId)
+
+  if (error) throw error
+}
+
 // -----------------------------
 // Skills
 // -----------------------------
@@ -707,6 +720,7 @@ export async function getPostComments(postId: number) {
   // Fetch user info separately for each comment
   const commentsWithUsers = await Promise.all(
     data.map(async (comment) => {
+      console.log('Comment data:', comment);
       const { data: userData } = await supabase
         .from('users')
         .select('username, avatar_url, level')
