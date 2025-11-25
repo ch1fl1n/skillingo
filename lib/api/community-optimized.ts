@@ -12,7 +12,7 @@
 
 import { supabase, currentUserId } from '@/lib/supabase';
 import type { Tables, TablesInsert } from '@/types/database.types';
-import { LRUCache } from './utils/cache';
+import { LRUCache } from './cache';
 
 // =====================
 // TYPE DEFINITIONS

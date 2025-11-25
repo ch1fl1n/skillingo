@@ -2,7 +2,6 @@ import React from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { supabase, currentUserId, computeLevel } from '@/lib/supabase';
-import QuizComponent from '@/components/tutorial/QuizComponent';
 import { useAuth } from '@/contexts/AuthContext';
 
 // Forma mínima de la lección usada en el cliente. "content" es JSON adhoc para prototipo.
@@ -78,8 +77,9 @@ export default function LessonScreen() {
     const { error: attemptError } = await supabase.from('lesson_attempts').insert({
       user_id: uid,
       lesson_id: lesson.id || null,
-      score,
+      score: Math.round(score),
       completed,
+      attempted_at: new Date().toISOString(),
     });
     if (attemptError) {
       Alert.alert('Error', 'No se pudo registrar el intento');
@@ -142,7 +142,6 @@ export default function LessonScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>{lesson.title}</Text>
       <Text style={styles.meta}>Dificultad: {lesson.difficulty} | XP: {lesson.xp_reward}</Text>
-      <QuizComponent content={lesson.content} onSubmit={recordAttempt} submitting={submitting} />
       {lastScore !== null && <Text style={styles.score}>Último puntaje: {lastScore}</Text>}
     </View>
   );
