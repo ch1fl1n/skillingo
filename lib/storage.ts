@@ -14,7 +14,7 @@ type FileBody =
   | Buffer
   | ReadableStream;
 
-type UploadResult = { path: string | null; error: any };
+type UploadResult = { path: string | null; error: unknown };
 
 /* ===========================
    Signed URL helpers
@@ -43,7 +43,7 @@ export async function createSignedUrls(
   expiresIn: number,
   options?: { download?: string | boolean }
 ) {
-  const { data, error } = await supabase.storage.from(bucketId).createSignedUrls(paths, expiresIn, options as any);
+  const { data, error } = await supabase.storage.from(bucketId).createSignedUrls(paths, expiresIn, options);
   if (error) throw error;
   return data;
 }
@@ -284,13 +284,11 @@ export async function uploadUriToStorage(
     try {
       const res = await fetch(normalizedUri);
       // prefer blob when available (web)
-      // @ts-ignore
       if (typeof res.blob === 'function') {
         try {
-          // @ts-ignore
           const blob = await res.blob();
           const contentType = res.headers?.get?.('Content-Type') ?? undefined;
-          const { error } = await supabase.storage.from(bucket).upload(path, blob as any, {
+          const { error } = await supabase.storage.from(bucket).upload(path, blob as Blob, {
             contentType,
             upsert: options?.upsert ?? false,
           });
@@ -311,7 +309,7 @@ export async function uploadUriToStorage(
         const contentType = res.headers?.get?.('Content-Type') ?? undefined;
         // prefer Uint8Array
         const uint8 = new Uint8Array(arrayBuffer);
-        const { error } = await supabase.storage.from(bucket).upload(path, uint8 as any, {
+        const { error } = await supabase.storage.from(bucket).upload(path, uint8 as Uint8Array, {
           contentType,
           upsert: options?.upsert ?? false,
         });
@@ -332,13 +330,13 @@ export async function uploadUriToStorage(
     // attempt 2: expo-file-system (React Native / Expo)
     try {
       // dynamic import so web bundlers don't break
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
+       
       const FileSystem = await import('expo-file-system');
       // read as base64
       // NOTE: many expo-file-system versions accept encoding as 'base64' string.
-      const base64: string = await (FileSystem as any).readAsStringAsync(normalizedUri, {
+      const base64: string = await (FileSystem as { readAsStringAsync: (uri: string, options: { encoding: string }) => Promise<string> }).readAsStringAsync(normalizedUri, {
         encoding: 'base64', // <-- fixed: pass literal 'base64' to avoid runtime errors
-      } as any);
+      });
 
       if (!base64) {
         console.warn('uploadUriToStorage: expo-file-system returned empty base64 string');
@@ -346,14 +344,14 @@ export async function uploadUriToStorage(
 
       const uint8 = base64ToUint8Array(base64);
       // try to guess content type from extension if possible
-      const ext = normalizedUri.split('.').pop()?.split(/\#|\?/)[0]?.toLowerCase();
-      let contentType: string | undefined = (options as any)?.contentType;
+      const ext = normalizedUri.split('.').pop()?.split(/#|\?/)[0]?.toLowerCase();
+      let contentType: string | undefined = (options as { contentType?: string })?.contentType;
       if (!contentType && ext) {
         if (ext === 'jpg' || ext === 'jpeg') contentType = 'image/jpeg';
         else if (ext === 'png') contentType = 'image/png';
         else if (ext === 'webp') contentType = 'image/webp';
       }
-      const { error } = await supabase.storage.from(bucket).upload(path, uint8 as any, {
+      const { error } = await supabase.storage.from(bucket).upload(path, uint8 as Uint8Array, {
         contentType,
         upsert: options?.upsert ?? false,
       });
@@ -373,7 +371,7 @@ export async function uploadUriToStorage(
       const arrayBuffer2 = await res2.arrayBuffer();
       const uint8 = new Uint8Array(arrayBuffer2);
       const contentType = res2.headers?.get?.('Content-Type') ?? undefined;
-      const { error } = await supabase.storage.from(bucket).upload(path, uint8 as any, {
+      const { error } = await supabase.storage.from(bucket).upload(path, uint8 as Uint8Array, {
         contentType,
         upsert: options?.upsert ?? false,
       });

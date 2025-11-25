@@ -97,6 +97,9 @@ export default function LessonScreen() {
     return (
       <View style={styles.errorContainer}>
         <Text style={styles.errorText}>Lesson not found</Text>
+        <TouchableOpacity onPress={() => router.back()}>
+          <Text style={styles.errorLink}>Go back</Text>
+        </TouchableOpacity>
       </View>
     );
   }

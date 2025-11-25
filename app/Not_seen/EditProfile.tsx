@@ -77,7 +77,7 @@ export default function EditProfileScreen() {
         }
 
         if (!mounted) return;
-        const row: any = data ?? null;
+        const row = data;
         if (row) {
           // split username into first/last for ui convenience
           if (row.username) {
@@ -125,7 +125,7 @@ export default function EditProfileScreen() {
     try {
       // Verificar sesión actual (evita subir sin token)
       const { data: sessionData } = await supabase.auth.getSession();
-      const session = (sessionData as any)?.session ?? null;
+      const session = (sessionData as { session?: unknown })?.session ?? null;
       if (!session) {
         throw new Error('No active session. Asegúrate de estar autenticado antes de subir.');
       }
@@ -151,14 +151,14 @@ export default function EditProfileScreen() {
       if (!previewUrl) {
         try {
           const { data: signedData, error: signedErr } = await supabase.storage.from(bucket).createSignedUrl(path, 60 * 60 * 24);
-          if (!signedErr && (signedData as any)?.signedUrl) previewUrl = (signedData as any).signedUrl;
+          if (!signedErr && (signedData as { signedUrl?: string })?.signedUrl) previewUrl = (signedData as { signedUrl?: string }).signedUrl;
         } catch (e) {
           console.warn('createSignedUrl fallback error', e);
         }
       }
 
       // actualizar fila users: guardamos avatar_path siempre (autoridad)
-      const updatePayload: any = { avatar_path: path };
+      const updatePayload: { avatar_path: string; avatar_url?: string | null } = { avatar_path: path };
       if (publicUrl) updatePayload.avatar_url = publicUrl;
       else updatePayload.avatar_url = null;
 
@@ -176,7 +176,7 @@ export default function EditProfileScreen() {
       Alert.alert('Éxito', 'Imagen de perfil actualizada');
     } catch (err) {
       console.error('uploadAndSave', err);
-      Alert.alert('Error', String((err as any).message || err));
+      Alert.alert('Error', String((err as Error).message || err));
     } finally {
       setUploading(false);
     }
@@ -195,12 +195,12 @@ export default function EditProfileScreen() {
       });
 
       // normalize cancellation for old/new APIs
-      // @ts-ignore
-      const canceled = typeof (res as any).canceled === 'boolean' ? (res as any).canceled : (res as any).cancelled;
+      // @ts-expect-error ImagePicker API varies between versions
+      const canceled = typeof (res as { canceled?: boolean }).canceled === 'boolean' ? (res as { canceled?: boolean }).canceled : (res as { cancelled?: boolean }).cancelled;
       if (canceled) return;
 
-      // @ts-ignore
-      const uri = (res as any).assets?.[0]?.uri ?? (res as any).uri;
+      // @ts-expect-error ImagePicker API varies between versions
+      const uri = (res as { assets?: { uri: string }[] }).assets?.[0]?.uri ?? (res as { uri?: string }).uri;
       if (!uri) return;
 
       // resize/compress
@@ -213,7 +213,7 @@ export default function EditProfileScreen() {
       await uploadAndSave(processed.uri);
     } catch (err) {
       console.error('pickFromGallery', err);
-      Alert.alert('Error', String((err as any).message || err));
+      Alert.alert('Error', String((err as Error).message || err));
     }
   }
 
@@ -228,7 +228,7 @@ export default function EditProfileScreen() {
       const perm = await ImagePicker.requestCameraPermissionsAsync();
       const granted =
         // some SDKs return boolean `granted`, others return { status: 'granted' }
-        (perm as any).granted ?? (perm as any).status === 'granted';
+        (perm as { granted?: boolean }).granted ?? (perm as { status?: string }).status === 'granted';
 
       if (!granted) {
         return Alert.alert('Permisos', 'Permiso de cámara denegado');
@@ -241,12 +241,12 @@ export default function EditProfileScreen() {
       });
 
       // normalize cancellation
-      // @ts-ignore
-      const canceled = typeof (res as any).canceled === 'boolean' ? (res as any).canceled : (res as any).cancelled;
+      // @ts-expect-error ImagePicker API varies between versions
+      const canceled = typeof (res as { canceled?: boolean }).canceled === 'boolean' ? (res as { canceled?: boolean }).canceled : (res as { cancelled?: boolean }).cancelled;
       if (canceled) return;
 
-      // @ts-ignore
-      const uri = (res as any).assets?.[0]?.uri ?? (res as any).uri;
+      // @ts-expect-error ImagePicker API varies between versions
+      const uri = (res as { assets?: { uri: string }[] }).assets?.[0]?.uri ?? (res as { uri?: string }).uri;
       if (!uri) return;
 
       const processed = await ImageManipulator.manipulateAsync(uri, [{ resize: { width: 1024 } }], {
@@ -258,7 +258,7 @@ export default function EditProfileScreen() {
       await uploadAndSave(processed.uri);
     } catch (err) {
       console.error('takePhoto', err);
-      Alert.alert('Error', String((err as any).message || err));
+      Alert.alert('Error', String((err as Error).message || err));
     }
   }
 
@@ -277,7 +277,7 @@ export default function EditProfileScreen() {
     const username = `${(firstName || '').trim()} ${(lastName || '').trim()}`.trim() || null;
 
     // build payload that matches the users table columns
-    const userData: any = {};
+    const userData: { username?: string; email?: string; gender: 'Male' | 'Female'; location: string } = {};
     if (username !== null) userData.username = username;
     if (email) userData.email = email;
     // gender & location columns exist (option C) -> include directly
@@ -293,7 +293,7 @@ export default function EditProfileScreen() {
     } catch (err) {
       console.error('save profile', err);
       // If we get a column-related error (unexpected) show actionable message
-      const msg = (err as any)?.message ?? JSON.stringify(err);
+      const msg = (err as Error)?.message ?? JSON.stringify(err);
       Alert.alert('Error', 'No se pudo guardar: ' + msg);
     }
   }

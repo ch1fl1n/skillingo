@@ -332,7 +332,7 @@ export async function getUserProgress() {
 
 export async function getCurrentUserProfile() {
   const { data: sessionData } = await supabase.auth.getSession();
-  const userId = (sessionData as any)?.session?.user?.id ?? null;
+  const userId = (sessionData as { session?: { user?: { id: string } } })?.session?.user?.id ?? null;
   if (!userId) return null;
 
   const { data, error } = await supabase
@@ -346,7 +346,7 @@ export async function getCurrentUserProfile() {
     return null;
   }
 
-  const row: any = data ?? null;
+  const row = data;
   if (!row) return null;
 
   // resolver avatar: prefer avatar_url, sino convertir avatar_path a public url si bucket público

@@ -3,35 +3,39 @@ import { supabase } from '@/lib/supabase';
 import { usePerf } from '@/components/tutorial/PerfProvider';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProgressOutbox } from '@/components/tutorial/ProgressOutbox';
+import { Json } from '@/types/database.types';
 
 interface Lesson {
   id: number;
-  skillId: number;
+  skill_id: number | null;
   title: string;
-  description: string;
+  content: Json;
+  difficulty: string | null;
+  xp_reward: number | null;
+  created_at: string | null;
+  // Assuming other fields are added in migrations
+  description?: string;
   imageUrl?: string;
   blurhash?: string;
-  estimatedDuration: number;
-  order: number;
-  content: string;
-  createdAt: string;
+  estimatedDuration?: number;
+  order?: number;
 }
 
 interface UserProgress {
-  userId: string;
-  skillId: number;
-  xpGained: number;
-  completedLessons: number;
-  lastUpdated: string;
+  user_id: string | null;
+  skill_id: number | null;
+  progress_percent: number | null;
+  last_updated: string | null;
+  // Assuming xpGained, completedLessons are calculated or from other fields
 }
 
 interface LessonAttempt {
   id: number;
-  userId: string;
-  lessonId: number;
-  completedAt: string | null;
-  scorePercentage: number | null;
-  xpEarned: number;
+  user_id: string | null;
+  lesson_id: number | null;
+  attempted_at: string | null;
+  completed: boolean | null;
+  score: number | null;
 }
 
 /**
@@ -46,40 +50,48 @@ export function useLesson(lessonId: number, prefetchNext: boolean = true) {
 
   return useQuery({
     queryKey: ['lesson', lessonId],
-    queryFn: async (): Promise<Lesson> => {
+    queryFn: async (): Promise<Lesson | null> => {
       mark(`lesson-load-${lessonId}`);
 
       const { data, error } = await supabase
         .from('lessons')
         .select('*')
-        .eq('id', lessonId)
-        .single();
+        .eq('id', lessonId);
 
       if (error) throw error;
+
+      if (!data || data.length === 0) {
+        measure(`lesson-load-${lessonId}`, `lesson-load-${lessonId}`, {
+          lessonId,
+          found: false,
+        });
+        return null;
+      }
+
+      const lesson = data[0];
 
       measure(`lesson-load-${lessonId}`, `lesson-load-${lessonId}`, {
         lessonId,
       });
 
       // Prefetch siguiente lección si existe
-      if (prefetchNext && data?.order) {
-        const nextOrder = data.order + 1;
+      if (prefetchNext && (lesson as Lesson).order) {
+        const nextOrder = (lesson as Lesson).order! + 1;
         queryClient.prefetchQuery({
-          queryKey: ['lesson', 'byOrder', data.skillId, nextOrder],
+          queryKey: ['lesson', 'byOrder', lesson.skill_id, nextOrder],
           queryFn: async () => {
             const { data: next } = await supabase
               .from('lessons')
               .select('*')
-              .eq('skill_id', data.skillId)
-              .eq('order', nextOrder)
-              .single();
-            return next;
+              .eq('skill_id', lesson.skill_id as number)
+              .eq('order', nextOrder);
+            return next && next.length > 0 ? next[0] : null;
           },
           staleTime: 1000 * 60 * 10,
         });
       }
 
-      return data as Lesson;
+      return lesson;
     },
     staleTime: 1000 * 60 * 10, // 10 min
     gcTime: 1000 * 60 * 60 * 24, // 24 horas
@@ -115,18 +127,17 @@ export function useUserProgress(skillId: number) {
 
   return useQuery({
     queryKey: ['progress', user?.id, skillId],
-    queryFn: async (): Promise<UserProgress> => {
+    queryFn: async (): Promise<UserProgress | null> => {
       if (!user?.id) throw new Error('No user');
 
       const { data, error } = await supabase
         .from('user_progress')
         .select('*')
         .eq('user_id', user.id)
-        .eq('skill_id', skillId)
-        .single();
+        .eq('skill_id', skillId);
 
       if (error) throw error;
-      return data as UserProgress;
+      return data && data.length > 0 ? data[0] : null;
     },
     enabled: !!user?.id,
     staleTime: 1000 * 60 * 5, // 5 min
