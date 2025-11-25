@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -51,8 +51,10 @@ export default function PostDetailScreen() {
   const [commentsExpanded, setCommentsExpanded] = useState(false);
   const [ratingLoading, setRatingLoading] = useState(false);
 
-  // Memoized post data to prevent unnecessary re-renders
-  const post = useMemo(() => postDetailData?.post, [postDetailData?.post]);
+  const [comments, setComments] = useState<any[]>([]);
+  const [commentText, setCommentText] = useState('');
+  const [commentLoading, setCommentLoading] = useState(false);
+  const [commentsExpanded, setCommentsExpanded] = useState(false);
 
   // Memoized handler for rating with loading state
   const handleRateWithLoading = useCallback(
@@ -67,88 +69,61 @@ export default function PostDetailScreen() {
     [handleRate]
   );
 
-  // Memoized handler for comment submission
-  const handleCommentSubmit = useCallback(async () => {
+  const handleCommentSubmit = async () => {
     if (!commentText.trim()) return;
-
     try {
-      const newComment = await createComment({
-        postId,
-        content: commentText.trim(),
-      });
-
+      setCommentLoading(true);
+      const newComment = await createComment({ postId, content: commentText.trim() });
       if (newComment) {
-        addCommentToList(newComment);
+        setComments((prev) => [newComment, ...prev]);
         setCommentText('');
       }
     } catch (err) {
       console.error('Error creating comment:', err);
-      alert(err instanceof Error ? err.message : 'Failed to post comment');
-    }
-  }, [commentText, postId, createComment, addCommentToList]);
-
-  const handleDelete = async () => {
-    console.log('DELETE POST BUTTON CLICKED');
-    console.log('Post ID:', postId);
-    console.log('User ID:', user?.id);
-    console.log('Post user_id:', post?.user_id);
-    
-    try {
-      console.log('STARTING POST DELETE');
-      await deleteCommunityPost(postId);
-      console.log('POST DELETED SUCCESSFULLY');
-      router.replace('/(tabs)/two');
-      Alert.alert('Success', 'Post deleted successfully');
-    } catch (err) {
-      console.error('POST DELETE FAILED:', err);
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to delete post');
+      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to post comment');
+    } finally {
+      setCommentLoading(false);
     }
   };
 
-  const handleDeleteOld = async () => {
-    Alert.alert(
-      'Delete Post',
-      'Are you sure you want to delete this post? This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteCommunityPost(postId);
-              Alert.alert('Success', 'Post deleted successfully');
-              router.back();
-            } catch (err) {
-              console.error('Error deleting post:', err);
-              Alert.alert('Error', err instanceof Error ? err.message : 'Failed to delete post');
-            }
-          },
+  const handleDelete = async () => {
+    Alert.alert('Delete Post', 'Are you sure you want to delete this post?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteCommunityPost(postId);
+            Alert.alert('Success', 'Post deleted');
+            router.replace('/(tabs)/two');
+          } catch (err) {
+            console.error('Error deleting post:', err);
+            Alert.alert('Error', err instanceof Error ? err.message : 'Failed to delete post');
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const handleDeleteComment = async (commentId: number) => {
     try {
-      console.log('STARTING DELETE for comment:', commentId);
       await deleteComment(commentId);
-      console.log('DELETE SUCCESSFUL');
-      setComments(prev => prev.filter(c => c.id !== commentId));
+      setComments((prev) => prev.filter((c) => c.id !== commentId));
       Alert.alert('Success', 'Comment deleted');
     } catch (err) {
-      console.error('DELETE FAILED:', err);
+      console.error('Error deleting comment:', err);
       Alert.alert('Error', err instanceof Error ? err.message : 'Failed to delete comment');
     }
   };
 
   const getCategoryColor = (category: string | null) => {
     const categoryColors: Record<string, string> = {
-      'Tips': '#10b981',
-      'Achievement': '#3b82f6',
-      'Insight': '#8b5cf6',
-      'Question': '#f59e0b',
-      'Discussion': '#ef4444',
+      Tips: '#10b981',
+      Achievement: '#3b82f6',
+      Insight: '#8b5cf6',
+      Question: '#f59e0b',
+      Discussion: '#ef4444',
     };
     return categoryColors[category || ''] || '#6b7280';
   };
@@ -177,7 +152,7 @@ export default function PostDetailScreen() {
     return (
       <View style={[styles.centered, { backgroundColor: colors.background }]}>
         <MaterialCommunityIcons name="alert-circle" size={48} color="#ef4444" />
-        <Text style={styles.errorText}>{error?.message || 'Post not found'}</Text>
+        <Text style={styles.errorText}>{error || 'Post not found'}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={() => router.back()}>
           <Text style={styles.retryButtonText}>Go Back</Text>
         </TouchableOpacity>
@@ -233,7 +208,7 @@ export default function PostDetailScreen() {
         <View style={styles.actionsRow}>
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={handleLike}
+            onPress={handleLikeToggle}
             activeOpacity={0.7}
           >
             <MaterialCommunityIcons
@@ -242,7 +217,7 @@ export default function PostDetailScreen() {
               color={isLiked ? '#ef4444' : '#9ca3af'}
             />
             <Text style={[styles.actionText, isLiked && styles.actionTextActive]}>
-              {likeCount} {likeCount === 1 ? 'Like' : 'Likes'}
+              {likesCount} {likesCount === 1 ? 'Like' : 'Likes'}
             </Text>
           </TouchableOpacity>
 
@@ -267,7 +242,7 @@ export default function PostDetailScreen() {
         {/* Comments Section */}
         <View style={styles.commentsSection}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Comments</Text>
-          
+
           {/* Comment Input */}
           <View style={[styles.commentInputContainer, { backgroundColor: colors.surface?.default || '#f5f5f5' }]}>
             <TextInput
@@ -306,7 +281,6 @@ export default function PostDetailScreen() {
             <View style={styles.commentsList}>
               {comments.map((comment) => {
                 const isMyComment = user?.id === comment.user_id;
-                console.log(`Comment ${comment.id}: user=${user?.id}, comment.user_id=${comment.user_id}, isMyComment=${isMyComment}`);
                 return (
                 <View key={comment.id} style={styles.commentItem}>
                   <View style={styles.commentHeader}>
@@ -314,20 +288,16 @@ export default function PostDetailScreen() {
                       <MaterialCommunityIcons name="account" size={16} color="#fff" />
                     </View>
                     <View style={styles.commentInfo}>
-                      <Text style={[styles.commentAuthor, { color: colors.text }]}>
+                      <Text style={[styles.commentAuthor, { color: colors.text }]}> 
                         {comment.users?.username || 'Anonymous'}
                       </Text>
-                      <Text style={styles.commentTime}>
+                      <Text style={styles.commentTime}> 
                         {new Date(comment.created_at).toLocaleDateString()}
                       </Text>
                     </View>
                     {isMyComment && (
                       <TouchableOpacity
-                        onPress={() => {
-                          console.log('Delete button clicked for comment:', comment.id);
-                          console.log('User ID:', user?.id, 'Comment user_id:', comment.user_id);
-                          handleDeleteComment(comment.id);
-                        }}
+                        onPress={() => handleDeleteComment(comment.id)}
                         style={styles.commentDeleteButton}
                         activeOpacity={0.7}
                       >
@@ -335,7 +305,7 @@ export default function PostDetailScreen() {
                       </TouchableOpacity>
                     )}
                   </View>
-                  <Text style={[styles.commentContent, { color: colors.text }]}>
+                  <Text style={[styles.commentContent, { color: colors.text }]}> 
                     {comment.content}
                   </Text>
                 </View>
