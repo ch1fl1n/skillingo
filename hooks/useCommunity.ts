@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PostDetailData, CommentWithUser } from '@/lib/api/community-optimized';
 import * as communityApi from '@/lib/api/community-optimized';
+import { subscribeToPostLikes } from '@/lib/supabase';
 
 // =====================
 // useLikePost Hook
@@ -120,8 +121,21 @@ export function usePostDetail(
 
     fetchData();
 
+    // Subscribe to post_likes changes for realtime updates; when likes change we'll
+    // refetch the post detail to refresh counts and userMetadata.
+    let unsub: (() => void) | null = null;
+    try {
+      unsub = subscribeToPostLikes(postId, () => {
+        // silent refresh - ignore errors but update data when possible
+        communityApi.getPostDetailOptimized(postId).then((r) => setData(r)).catch(() => {/* no-op */});
+      });
+    } catch (e) {
+      // ignore subscription errors
+    }
+
     return () => {
       controller.abort();
+      if (unsub) unsub();
     };
   }, [postId]);
 
