@@ -174,9 +174,9 @@ export function useCompleteLessonMutation() {
         const { error } = await supabase.from('lesson_attempts').insert({
           user_id: user.id,
           lesson_id: lessonId,
-          completed_at: new Date().toISOString(),
-          score_percentage: 100,
-          xp_earned: xpGained,
+          attempted_at: new Date().toISOString(),
+          score: Math.round((xpGained / 100) * 100),
+          completed: true,
         });
 
         if (error) throw error;

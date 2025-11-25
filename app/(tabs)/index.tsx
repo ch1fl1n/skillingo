@@ -194,7 +194,6 @@ export default function HomeScreen() {
             <TouchableOpacity 
               style={styles.statCard} 
               activeOpacity={0.7}
-              onPress={() => router.push('/skills')}
             >
               <MaterialCommunityIcons name="star" size={24} color="#00d4ff" />
               <Text style={styles.statValue}>{level}</Text>

@@ -14,7 +14,6 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getLessonById, trackLessonAttempt, awardXP } from '@/lib/db';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
-import QuizComponent from '@/components/QuizComponent';
 import type { Lesson, LessonStep } from '@/types/lesson.types';
 
 export default function LessonViewerScreen() {
@@ -204,7 +203,6 @@ export default function LessonViewerScreen() {
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Quiz Time!</Text>
         </View>
-        <QuizComponent quiz={lesson.content.quiz} onComplete={handleQuizComplete} />
       </SafeAreaView>
     );
   }
