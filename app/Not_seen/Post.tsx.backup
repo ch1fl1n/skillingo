@@ -156,6 +156,69 @@ export default function ModalPostScreen() {
 }
 
 const styles = StyleSheet.create({
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.closeBtn} onPress={() => router.back()}>
+          <MaterialCommunityIcons name="close" size={24} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Create Post</Text>
+      </View>
+
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: 40 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Title */}
+        <TextInput
+          placeholder="Title (Max 50 characters)"
+          placeholderTextColor="#6b7280"
+          style={styles.input}
+          value={title}
+          onChangeText={setTitle}
+          maxLength={50}
+        />
+
+        {/* Body */}
+        <TextInput
+          placeholder="Write something..."
+          placeholderTextColor="#6b7280"
+          multiline
+          style={[styles.input, styles.textArea]}
+          value={body}
+          onChangeText={setBody}
+        />
+
+        {/* Category dropdown (fake for now) */}
+        <TouchableOpacity style={styles.dropdown} onPress={() => {/* abrir modal/categories */}}>
+          <Text style={styles.dropdownText}>
+            Select Category
+          </Text>
+          <MaterialCommunityIcons name="chevron-down" size={22} color="#9ca3af" style={{ marginLeft: 6 }} />
+        </TouchableOpacity>
+
+        {/* Guidelines */}
+        <Text style={styles.guidelines}>
+          Content Guidelines: Posts should be respectful, relevant, and contribute positively to the community. Inappropriate content will be removed.
+        </Text>
+
+        {/* Buttons */}
+        <View style={styles.btnRow}>
+          <TouchableOpacity style={styles.draftBtn} onPress={() => {/* guardar draft */}}>
+            <Text style={styles.draftText}>Save as Draft</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.submitBtn} onPress={() => {/* submit */}}>
+            <Text style={styles.submitText}>Submit for Review</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#1a1a1a', paddingHorizontal: 18, paddingTop: 40 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 18 },
   closeBtn: { position: 'absolute', left: 0 },

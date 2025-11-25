@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,21 +11,16 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { 
-  getCommunityPostById, 
-  ratePost, 
-  getMyPostRating,
-  likePost,
-  unlikePost,
-  isPostLikedByMe,
-  getPostComments,
-  createComment,
-} from '@/lib/db';
-import type { Tables } from '@/types/database.types';
+import {
+  usePostDetail,
+  useLikePost,
+  useRatePost,
+  usePostComments,
+  useCreateComment,
+  useCommunityCleanup,
+} from '@/hooks/useCommunity';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
-
-type CommunityPost = Tables<'community_posts'>;
 
 export default function PostDetailScreen() {
   const router = useRouter();
@@ -34,107 +29,61 @@ export default function PostDetailScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
 
-  const [post, setPost] = useState<CommunityPost | null>(null);
-  const [myRating, setMyRating] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [ratingLoading, setRatingLoading] = useState(false);
-  
-  // Likes state
-  const [isLiked, setIsLiked] = useState(false);
-  const [likesCount, setLikesCount] = useState(0);
-  
-  // Comments state
-  const [comments, setComments] = useState<Array<{
-    id: number;
-    content: string;
-    created_at: string;
-    users: { username: string; avatar_url: string | null; level: number } | null;
-  }>>([]);
+  // Cleanup debounce timers on unmount
+  useCommunityCleanup();
+
+  // OPTIMIZATION: Use custom hooks for data fetching with built-in caching
+  const { data: postDetailData, loading, error } = usePostDetail(postId);
+  const { isLiked, likeCount, handleLike } = useLikePost(
+    postId,
+    postDetailData?.userMetadata.isLiked ?? false
+  );
+  const { rating: myRating, handleRate } = useRatePost(
+    postId,
+    postDetailData?.userMetadata.userRating ?? null
+  );
+  const { comments, addComment: addCommentToList } = usePostComments(postId);
+  const { createComment, loading: commentLoading } = useCreateComment();
+
   const [commentText, setCommentText] = useState('');
-  const [commentLoading, setCommentLoading] = useState(false);
   const [commentsExpanded, setCommentsExpanded] = useState(false);
+  const [ratingLoading, setRatingLoading] = useState(false);
 
-  useEffect(() => {
-    loadPost();
-  }, [postId]);
+  // Memoized post data to prevent unnecessary re-renders
+  const post = useMemo(() => postDetailData?.post, [postDetailData?.post]);
 
-  const loadPost = async () => {
-    try {
-      setLoading(true);
-      const [postData, ratingData, likedStatus, commentsData] = await Promise.all([
-        getCommunityPostById(postId),
-        getMyPostRating(postId),
-        isPostLikedByMe(postId),
-        getPostComments(postId),
-      ]);
-      setPost(postData);
-      setMyRating(ratingData);
-      setIsLiked(likedStatus);
-      setLikesCount((postData as any).likes_count || 0);
-      setComments(commentsData);
-    } catch (err) {
-      console.error('Error loading post:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load post');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRate = async (rating: number) => {
-    try {
+  // Memoized handler for rating with loading state
+  const handleRateWithLoading = useCallback(
+    async (newRating: number) => {
       setRatingLoading(true);
-      await ratePost(postId, rating);
-      setMyRating(rating);
-    } catch (err) {
-      console.error('Error rating post:', err);
-      alert(err instanceof Error ? err.message : 'Failed to rate post');
-    } finally {
-      setRatingLoading(false);
-    }
-  };
-
-  const handleLike = async () => {
-    try {
-      if (isLiked) {
-        await unlikePost(postId);
-        setIsLiked(false);
-        setLikesCount(prev => Math.max(0, prev - 1));
-      } else {
-        await likePost(postId);
-        setIsLiked(true);
-        setLikesCount(prev => prev + 1);
+      try {
+        await handleRate(newRating);
+      } finally {
+        setRatingLoading(false);
       }
-    } catch (err) {
-      console.error('Error liking post:', err);
-      alert(err instanceof Error ? err.message : 'Failed to like post');
-    }
-  };
+    },
+    [handleRate]
+  );
 
-  const handleCommentSubmit = async () => {
+  // Memoized handler for comment submission
+  const handleCommentSubmit = useCallback(async () => {
     if (!commentText.trim()) return;
-    
+
     try {
-      setCommentLoading(true);
       const newComment = await createComment({
         postId,
         content: commentText.trim(),
       });
-      
-      // Add user info to new comment (optimistic update)
-      setComments(prev => [...prev, { ...newComment, users: null }]);
-      setCommentText('');
-      
-      // Refresh to get proper user data
-      const updatedComments = await getPostComments(postId);
-      setComments(updatedComments);
+
+      if (newComment) {
+        addCommentToList(newComment);
+        setCommentText('');
+      }
     } catch (err) {
       console.error('Error creating comment:', err);
       alert(err instanceof Error ? err.message : 'Failed to post comment');
-    } finally {
-      setCommentLoading(false);
     }
-  };
+  }, [commentText, postId, createComment, addCommentToList]);
 
   const getCategoryColor = (category: string | null) => {
     const categoryColors: Record<string, string> = {
@@ -171,7 +120,7 @@ export default function PostDetailScreen() {
     return (
       <View style={[styles.centered, { backgroundColor: colors.background }]}>
         <MaterialCommunityIcons name="alert-circle" size={48} color="#ef4444" />
-        <Text style={styles.errorText}>{error || 'Post not found'}</Text>
+        <Text style={styles.errorText}>{error?.message || 'Post not found'}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={() => router.back()}>
           <Text style={styles.retryButtonText}>Go Back</Text>
         </TouchableOpacity>
@@ -230,7 +179,7 @@ export default function PostDetailScreen() {
               color={isLiked ? '#ef4444' : '#9ca3af'}
             />
             <Text style={[styles.actionText, isLiked && styles.actionTextActive]}>
-              {likesCount} {likesCount === 1 ? 'Like' : 'Likes'}
+              {likeCount} {likeCount === 1 ? 'Like' : 'Likes'}
             </Text>
           </TouchableOpacity>
 
@@ -261,7 +210,7 @@ export default function PostDetailScreen() {
             <TextInput
               style={[styles.commentInput, { color: colors.text }]}
               placeholder="Write a comment..."
-              placeholderTextColor={colors.neutral?.[400] || '#9ca3af'}
+              placeholderTextColor="#9ca3af"
               value={commentText}
               onChangeText={setCommentText}
               multiline
@@ -318,13 +267,14 @@ export default function PostDetailScreen() {
 
         <View style={styles.divider} />
 
+        {/* Rating Section */}
         <View style={styles.ratingSection}>
           <Text style={[styles.ratingLabel, { color: colors.text }]}>Rate this post</Text>
           <View style={styles.starsRow}>
             {[1, 2, 3, 4, 5].map((star) => (
               <TouchableOpacity
                 key={star}
-                onPress={() => handleRate(star)}
+                onPress={() => handleRateWithLoading(star)}
                 disabled={ratingLoading}
                 activeOpacity={0.7}
                 style={styles.starButton}

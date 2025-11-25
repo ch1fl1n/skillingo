@@ -13,7 +13,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { listCommunityPosts } from '@/lib/db';
-import PostCard from '@/components/community/PostCard';
+import PostCard from '@/components/PostCard';
 import type { Tables } from '@/types/database.types';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
