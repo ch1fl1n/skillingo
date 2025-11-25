@@ -1,69 +1,70 @@
-const tintColorLight = '#007bffff';
-const tintColorDark = '#ffffffff';
+// Primary tint colors for light/dark themes
+const tintColorLight = '#0066FF';
+const tintColorDark = '#66D9FF';
 
 export default {
   light: {
-    text: '#121212ff',
-    background: '#ffffffff',
+    text: '#111827',
+    background: '#FFFFFF',
     tint: tintColorLight,
-    tabIconDefault: '#ccccccff',
+    tabIconDefault: '#B8C0CC',
     tabIconSelected: tintColorLight,
     primary: {
-      '300': '#4285f4ff',
-      '500': '#007bffff',
-      '700': '#0038a8ff',
-      '900': '#153a86ff',
+      '300': '#4F8EF9',
+      '500': '#0066FF',
+      '700': '#0047B3',
+      '900': '#0F3D91',
     },
     accent: {
-      '300': '#00ff88ff',
-      '500': '#00aaffff',
+      '300': '#4CE0B3',
+      '500': '#00C2A8',
     },
     secondary: {
-      '300': '#3498dbff',
-      '500': '#274bb3ff',
+      '300': '#8AA7FF',
+      '500': '#6C5CE7',
     },
     neutral: {
-      '100': '#f5f5f5ff',
-      '300': '#ccccccff',
-      '500': '#555555ff',
-      '700': '#333333ff',
-      '900': '#121212ff',
+      '100': '#F8FAFC',
+      '300': '#D1D5DB',
+      '500': '#6B7280',
+      '700': '#374151',
+      '900': '#0F172A',
     },
     surface: {
-      default: '#ffffffff',
-      elevated: '#f8f9fbff',
+      default: '#FFFFFF',
+      elevated: '#F3F4F6',
     },
   },
   dark: {
-    text: '#ffffffff',
-    background: '#121212ff',
+    text: '#F8FAFC',
+    background: '#0B1220',
     tint: tintColorDark,
-    tabIconDefault: '#ccccccff',
+    tabIconDefault: '#9CA3AF',
     tabIconSelected: tintColorDark,
     primary: {
-      '300': '#4285f4ff',
-      '500': '#007bffff',
-      '700': '#0038a8ff',
-      '900': '#153a86ff',
+      '300': '#5B9CFF',
+      '500': '#66D9FF',
+      '700': '#1EA6FF',
+      '900': '#0F4A6F',
     },
     accent: {
-      '300': '#00ff88ff',
-      '500': '#00aaffff',
+      '300': '#2FE8C9',
+      '500': '#1FD0B0',
     },
     secondary: {
-      '300': '#3498dbff',
-      '500': '#274bb3ff',
+      '300': '#9AA7FF',
+      '500': '#7A63E6',
     },
     neutral: {
-      '100': '#f5f5f5ff',
-      '300': '#ccccccff',
-      '500': '#555555ff',
-      '700': '#333333ff',
-      '900': '#121212ff',
+      '100': '#0B1220',
+      '300': '#1F2937',
+      '500': '#9CA3AF',
+      '700': '#6B7280',
+      '900': '#0B1220',
     },
     surface: {
-      default: '#ffffffff',
-      elevated: '#f8f9fbff',
+      default: '#07101A',
+      elevated: '#0F1720',
     },
   },
 };

@@ -41,7 +41,8 @@ export default function PostDetailScreen() {
   const post = postDetailData?.post ?? null;
   const { isLiked, likeCount, handleLike } = useLikePost(
     postId,
-    postDetailData?.userMetadata.isLiked ?? false
+    postDetailData?.userMetadata.isLiked ?? false,
+    postDetailData?.userMetadata.likeCount ?? 0
   );
   const { rating: myRating, handleRate } = useRatePost(
     postId,

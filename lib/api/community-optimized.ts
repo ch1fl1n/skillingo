@@ -320,9 +320,19 @@ export async function likePostOptimized(
   if (!userId) throw new Error('Not authenticated');
   const cacheKey = `${userId}_${postId}`;
   const cached = userInteractionCache.get(cacheKey);
-  const wasLiked = (cached?.data?.isLiked as boolean) ?? false;
+  const postCacheEntry = postCache.get(postId);
+  const wasLiked = (cached?.data?.isLiked as boolean) ?? (postCacheEntry?.data?.userMetadata?.isLiked as boolean) ?? false;
+  const currentCount = (cached?.data?.likeCount as number) ?? ((postCacheEntry?.data?.userMetadata?.likeCount as number) ?? 0);
+  const newCount = wasLiked ? Math.max(0, currentCount - 1) : currentCount + 1;
 
-  onOptimisticUpdate?.(!wasLiked, (cached?.data?.likeCount as number) ?? 0);
+  // Update in-memory interaction cache so subsequent operations see the optimistic state
+  userInteractionCache.set(cacheKey, {
+    data: { isLiked: !wasLiked, likeCount: newCount },
+    timestamp: Date.now(),
+    ttl: 60000,
+  });
+
+  onOptimisticUpdate?.(!wasLiked, newCount);
 
   // Debounce actual DB operation by 300ms
   const timer: ReturnType<typeof setTimeout> = setTimeout(async () => {
@@ -339,13 +349,54 @@ export async function likePostOptimized(
           .eq('user_id', userId);
       }
 
-      // Invalidate cache after successful operation
-      postCache.delete(postId);
+      // Update cached post detail if present so UI reflects final count immediately
+      const cachedPostEntry = postCache.get(postId);
+      if (cachedPostEntry && cachedPostEntry.data) {
+        try {
+          const meta = cachedPostEntry.data.userMetadata || { isLiked: false, likeCount: 0, userRating: null, commentCount: 0 };
+          const updatedMeta = {
+            ...meta,
+            isLiked: !wasLiked,
+            likeCount: newCount,
+          };
+          const newData = { ...cachedPostEntry.data, userMetadata: updatedMeta } as any;
+          // replace entry with updated data, keep same TTL
+          setCacheData(postCache, postId, newData, cachedPostEntry.ttl ?? CACHE_TTL_POST);
+        } catch (e) {
+          // fall back to invalidation
+          postCache.delete(postId);
+        }
+      } else {
+        postCache.delete(postId);
+      }
+
       userInteractionCache.delete(cacheKey);
     } catch (error) {
       console.error('Error toggling like:', error);
-      // Rollback optimistic update by notifying parent
-      onOptimisticUpdate?.(wasLiked, (cached?.data?.likeCount as number) ?? 0);
+      // If a duplicate-insert occurred (another client already liked), treat as success.
+      // Supabase/PostgREST returns status 409 for unique constraint violations.
+      const status = (error as any)?.status || (error as any)?.response?.status;
+      if (status === 409 && !wasLiked) {
+        // Another client already created the like; update cache to match optimistic state
+        const cachedPostEntry2 = postCache.get(postId);
+        if (cachedPostEntry2 && cachedPostEntry2.data) {
+          try {
+            const meta = cachedPostEntry2.data.userMetadata || { isLiked: false, likeCount: 0, userRating: null, commentCount: 0 };
+            const updatedMeta = { ...meta, isLiked: true, likeCount: newCount };
+            const newData = { ...cachedPostEntry2.data, userMetadata: updatedMeta } as any;
+            setCacheData(postCache, postId, newData, cachedPostEntry2.ttl ?? CACHE_TTL_POST);
+          } catch (e) {
+            postCache.delete(postId);
+          }
+        } else {
+          postCache.delete(postId);
+        }
+        userInteractionCache.delete(cacheKey);
+      } else {
+        // Rollback optimistic update by notifying parent
+        const rollbackCount = (cached?.data?.likeCount as number) ?? ((postCache.get(postId)?.data?.userMetadata?.likeCount as number) ?? 0);
+        onOptimisticUpdate?.(wasLiked, rollbackCount);
+      }
     } finally {
       debounceTimers.delete(debounceKey);
     }

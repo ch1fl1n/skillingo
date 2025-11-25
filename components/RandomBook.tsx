@@ -11,6 +11,9 @@ import {
   Animated,
   Dimensions,
 } from 'react-native';
+import { useColorScheme } from '@/components/useColorScheme';
+import Colors from '@/constants/Colors';
+import Typography from '@/constants/Typography';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type Book = {
@@ -223,6 +226,9 @@ export default function RandomBook(): JSX.Element {
     setCollapsed((c) => !c);
   }
 
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
+
   return (
     <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
       <Animated.View
@@ -231,24 +237,24 @@ export default function RandomBook(): JSX.Element {
       >
         <TouchableOpacity activeOpacity={0.9} onPress={toggleCollapsed} style={styles.bubbleTouch}>
           {collapsed ? (
-            <View style={styles.bubble}>
+            <View style={[styles.bubble, { backgroundColor: colors.primary['500'] }]}> 
               <Text style={styles.emoji}>📚</Text>
             </View>
           ) : (
-            <View style={styles.card}>
+            <View style={[styles.card, { backgroundColor: colors.surface.default }]}> 
               <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle}>Random Book</Text>
+                <Text style={[styles.cardTitle, { color: colors.text }]}>Random Book</Text>
                 <TouchableOpacity onPress={() => setCollapsed(true)}>
                   <Text style={styles.close}>✕</Text>
                 </TouchableOpacity>
               </View>
 
               <View style={styles.content}>
-                <TouchableOpacity onPress={getRandomBook} style={styles.refreshButton}>
-                  <Text style={styles.refreshText}>Refresh</Text>
+                <TouchableOpacity onPress={getRandomBook} style={[styles.refreshButton, { backgroundColor: colors.surface.elevated }]}> 
+                  <Text style={[styles.refreshText, { color: colors.primary['500'], fontSize: Typography.sizes.small } ]}>Refresh</Text>
                 </TouchableOpacity>
 
-                {loading && <ActivityIndicator style={{ marginTop: 8 }} />}
+                {loading && <ActivityIndicator style={{ marginTop: 8 }} color={colors.primary['500']} />}
 
                 {error && <Text style={styles.errorText}>{error}</Text>}
 
@@ -257,15 +263,15 @@ export default function RandomBook(): JSX.Element {
                     {book.cover ? (
                       <Image source={{ uri: book.cover }} style={styles.cover} />
                     ) : (
-                      <View style={[styles.cover, styles.coverPlaceholder]}>
-                        <Text style={{ fontSize: 12 }}>No cover</Text>
+                      <View style={[styles.cover, styles.coverPlaceholder, { backgroundColor: colors.surface.elevated }]}>
+                        <Text style={{ fontSize: Typography.sizes.caption }}>No cover</Text>
                       </View>
                     )}
                     <View style={{ flex: 1, marginLeft: 10 }}>
-                      <Text numberOfLines={2} style={styles.bookTitle}>
+                      <Text numberOfLines={2} style={[styles.bookTitle, { color: colors.text, fontSize: Typography.sizes.h3 }]}>
                         {book.title}
                       </Text>
-                      {book.author && <Text style={styles.bookAuthor}>{book.author}</Text>}
+                      {book.author && <Text style={[styles.bookAuthor, { color: colors.neutral['500'], fontSize: Typography.sizes.small }]}>{book.author}</Text>}
                     </View>
                   </View>
                 )}

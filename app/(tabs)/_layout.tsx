@@ -76,6 +76,15 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <TabBarIcon name="cog" color={color} />,
         }}
       />
+
+      {/* Hide wallet route from tab bar (keeps route file for deep links) */}
+      <Tabs.Screen
+        name="wallet"
+        options={{
+          tabBarButton: () => null,
+          headerShown: false,
+        }}
+      />
     </Tabs>
   );
 }

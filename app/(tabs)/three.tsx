@@ -12,6 +12,9 @@ const HERO_IMAGE_URI = 'https://example.com/hero-image.jpg'; // Placeholder URI 
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 import { getCurrentUserProfile } from '@/lib/db';
+import BombillosStoreModal from '@/components/BombillosStoreModal';
+import BombillosShopModal from '@/components/BombillosShopModal';
+import BombillosBadge from '@/components/BombillosBadge';
 
 // Mascot asset (ya lo tenías)
 import mascotImage from '@/assets/images/mascot/step4.jpeg';
@@ -23,6 +26,8 @@ export default function TabThreeScreen() {
   const { user } = useAuth();
 
   const [profile, setProfile] = React.useState<{ username: string | null; level: number | null; total_xp: number | null; avatar_url?: string | null } | null>(null);
+  const [showStore, setShowStore] = React.useState(false);
+  const [showShop, setShowShop] = React.useState(false);
 
   React.useEffect(() => {
     const loadHeader = async () => {
@@ -78,6 +83,9 @@ export default function TabThreeScreen() {
               <View style={styles.levelBadge}>
                 <Text style={styles.levelText}>{level}</Text>
               </View>
+              <View style={styles.bombillosBadgeContainer}>
+                <BombillosBadge size={36} onPress={() => setShowStore(true)} />
+              </View>
             </View>
 
             <View style={styles.userInfo}>
@@ -102,6 +110,15 @@ export default function TabThreeScreen() {
             >
               <Text style={styles.editProfileButtonText}>Edit Profile</Text>
             </TouchableOpacity>
+            <View style={{ height: 12 }} />
+            <TouchableOpacity style={[styles.smallButton, { marginTop: 12 }]} onPress={() => setShowStore(true)}>
+              <Text style={styles.smallButtonText}>Store</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.smallButton, { marginTop: 12, marginLeft: 8 }]} onPress={() => setShowShop(true)}>
+              <Text style={styles.smallButtonText}>Buy Bombillos</Text>
+            </TouchableOpacity>
+            <BombillosStoreModal visible={showStore} onClose={() => setShowStore(false)} onSuccess={() => { /* refresh profile if needed */ }} />
+            <BombillosShopModal visible={showShop} onClose={() => setShowShop(false)} onSuccess={() => { /* refresh profile if needed */ }} />
           </View>
         </View>
       </LinearGradient>
@@ -249,6 +266,28 @@ const styles = StyleSheet.create({
     color: '#000000',
     fontSize: 16,
     fontWeight: '700',
+  },
+  smallButton: {
+    backgroundColor: '#0b1220',
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  smallButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  bombillosBadgeContainer: {
+    position: 'absolute',
+    bottom: -6,
+    left: -6,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    overflow: 'visible',
   },
 
   content: { paddingHorizontal: 18, paddingTop: 18 },

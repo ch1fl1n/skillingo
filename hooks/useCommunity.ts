@@ -11,9 +11,9 @@ import * as communityApi from '@/lib/api/community-optimized';
 // useLikePost Hook
 // =====================
 
-export function useLikePost(postId: number, initialIsLiked: boolean) {
+export function useLikePost(postId: number, initialIsLiked: boolean, initialLikeCount: number = 0) {
   const [isLiked, setIsLiked] = useState(initialIsLiked);
-  const [likeCount, setLikeCount] = useState(0);
+  const [likeCount, setLikeCount] = useState(initialLikeCount);
   const [loading, setLoading] = useState(false);
 
   const handleLike = useCallback(async () => {
@@ -34,6 +34,12 @@ export function useLikePost(postId: number, initialIsLiked: boolean) {
       setLoading(false);
     }
   }, [postId, isLiked]);
+
+  // Update local state if initial props change (e.g., when post detail re-fetches)
+  useEffect(() => {
+    setIsLiked(initialIsLiked);
+    setLikeCount(initialLikeCount);
+  }, [initialIsLiked, initialLikeCount]);
 
   return { isLiked, likeCount, loading, handleLike };
 }

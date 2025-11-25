@@ -81,8 +81,14 @@ export const supabase = getSupabase();
  * Level formula (simple & cheap): floor(sqrt(total_xp / 100)).
  */
 export function computeLevel(totalXp: number): number {
-  // Fórmula simple: raíz cuadrada escalada -> crecimiento lento y sostenible.
-  return Math.floor(Math.sqrt(totalXp / 100));
+  // New progression:
+  // - Level 1 requires 100 total XP
+  // - Subsequent levels increase by a fixed 125 total XP per level (so total(L) = 100 + 125*(L-1))
+  // This gives totals: L1=100, L2=225, L3=350, ...
+  // Solve for level: level = floor((totalXp + 25) / 125)
+  if (!totalXp || totalXp <= 0) return 0;
+  const level = Math.floor((totalXp + 25) / 125);
+  return Math.max(0, level);
 }
 
 /**
@@ -143,12 +149,17 @@ export async function getBombillosBalance(userId?: string): Promise<number | nul
       .from('wallets')
       .select('balance')
       .eq('user_id', uid)
-      .single();
+      .maybeSingle();
     if (error) {
       console.warn('getBombillosBalance: select error', error);
       return null;
     }
-    return (data?.balance ?? null) as number | null;
+    // If no wallet row exists yet, return 0 instead of throwing.
+    if (!data) {
+      console.debug('getBombillosBalance: no wallet row found, returning 0');
+      return 0;
+    }
+    return (data?.balance ?? 0) as number | null;
   } catch (e) {
     console.error('getBombillosBalance error', e);
     return null;
@@ -230,6 +241,23 @@ export function subscribeToWallet(userId: string, handler: () => void) {
     }, handler)
     .subscribe();
   return () => { supabase.removeChannel(channel); };
+}
+
+/**
+ * Award XP to the authenticated user. Returns { data, error } where data is [{ new_total_xp, new_level }]
+ */
+export async function awardXp(xp: number) {
+  try {
+    const { data, error } = await supabase.rpc('award_xp', { p_xp: xp } as any);
+    if (error) {
+      console.warn('awardXp: rpc error', error);
+      return { data: null, error };
+    }
+    return { data, error: null };
+  } catch (e) {
+    console.error('awardXp error', e);
+    return { data: null, error: e };
+  }
 }
 
 
